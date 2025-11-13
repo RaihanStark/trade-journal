@@ -1,2 +1,187 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<script lang="ts">
+	import MetricCard from '$lib/components/MetricCard.svelte';
+	import TradesTable from '$lib/components/TradesTable.svelte';
+	import PerformanceChart from '$lib/components/PerformanceChart.svelte';
+	import StatsGrid from '$lib/components/StatsGrid.svelte';
+
+	const metrics = {
+		totalPL: 15420.5,
+		winRate: 64.5,
+		totalTrades: 128,
+		avgWin: 240.3,
+		avgLoss: -180.5,
+		profitFactor: 1.85,
+		sharpeRatio: 2.14,
+		maxDrawdown: -2340.2
+	};
+
+	const recentTrades: Array<{
+		id: number;
+		date: string;
+		time: string;
+		pair: string;
+		type: 'BUY' | 'SELL';
+		entry: number;
+		exit: number;
+		lots: number;
+		pips: number;
+		pl: number;
+		rr: number;
+		status: string;
+	}> = [
+		{
+			id: 1,
+			date: '2025-01-12',
+			time: '14:30',
+			pair: 'EUR/USD',
+			type: 'BUY' as const,
+			entry: 1.0925,
+			exit: 1.0965,
+			lots: 0.5,
+			pips: 40,
+			pl: 200,
+			rr: 2.5,
+			status: 'closed'
+		},
+		{
+			id: 2,
+			date: '2025-01-12',
+			time: '09:15',
+			pair: 'GBP/JPY',
+			type: 'SELL' as const,
+			entry: 188.45,
+			exit: 188.05,
+			lots: 0.3,
+			pips: 40,
+			pl: 120,
+			rr: 2.0,
+			status: 'closed'
+		},
+		{
+			id: 3,
+			date: '2025-01-11',
+			time: '16:45',
+			pair: 'USD/JPY',
+			type: 'BUY' as const,
+			entry: 145.2,
+			exit: 145.05,
+			lots: 0.4,
+			pips: -15,
+			pl: -60,
+			rr: -0.5,
+			status: 'closed'
+		},
+		{
+			id: 4,
+			date: '2025-01-11',
+			time: '11:20',
+			pair: 'EUR/GBP',
+			type: 'SELL' as const,
+			entry: 0.858,
+			exit: 0.8545,
+			lots: 0.6,
+			pips: 35,
+			pl: 210,
+			rr: 2.8,
+			status: 'closed'
+		},
+		{
+			id: 5,
+			date: '2025-01-10',
+			time: '13:00',
+			pair: 'AUD/USD',
+			type: 'BUY' as const,
+			entry: 0.672,
+			exit: 0.6705,
+			lots: 0.5,
+			pips: -15,
+			pl: -75,
+			rr: -0.6,
+			status: 'closed'
+		},
+		{
+			id: 6,
+			date: '2025-01-10',
+			time: '10:30',
+			pair: 'EUR/USD',
+			type: 'BUY' as const,
+			entry: 1.088,
+			exit: 1.092,
+			lots: 0.7,
+			pips: 40,
+			pl: 280,
+			rr: 3.2,
+			status: 'closed'
+		},
+		{
+			id: 7,
+			date: '2025-01-09',
+			time: '15:00',
+			pair: 'GBP/USD',
+			type: 'SELL' as const,
+			entry: 1.265,
+			exit: 1.26,
+			lots: 0.4,
+			pips: 50,
+			pl: 200,
+			rr: 2.5,
+			status: 'closed'
+		},
+		{
+			id: 8,
+			date: '2025-01-09',
+			time: '11:45',
+			pair: 'USD/CAD',
+			type: 'BUY' as const,
+			entry: 1.352,
+			exit: 1.348,
+			lots: 0.5,
+			pips: -40,
+			pl: -200,
+			rr: -1.5,
+			status: 'closed'
+		}
+	];
+</script>
+
+<div class="grid h-screen grid-cols-12 grid-rows-[auto_auto_1fr] bg-slate-950">
+	<!-- Header -->
+	<div
+		class="col-span-12 flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-2"
+	>
+		<div class="flex items-center gap-4">
+			<span class="text-sm font-bold text-slate-100">FOREX JOURNAL</span>
+			<div class="h-4 w-px bg-slate-700"></div>
+			<span class="font-mono text-xs text-slate-500">BAL:</span>
+			<span class="font-mono text-sm font-bold text-emerald-400">$25,420.50</span>
+			<span class="font-mono text-xs text-slate-500">EQ:</span>
+			<span class="font-mono text-sm font-bold text-blue-400">$25,890.30</span>
+		</div>
+		<button class="bg-slate-800 px-3 py-1.5 text-xs text-slate-300">+ TRADE</button>
+	</div>
+
+	<!-- Metrics -->
+	<div class="col-span-12 grid grid-cols-8 border-b border-slate-800">
+		<MetricCard title="P/L" value="$15,420" change="+12.4%" trend="up" />
+		<MetricCard title="WIN%" value="64.5%" change="+2.3%" trend="up" />
+		<MetricCard title="TRADES" value="128" change="+8" trend="neutral" />
+		<MetricCard title="PF" value="1.85" change="+0.15" trend="up" />
+		<MetricCard title="AVG W" value="$240" change="+5.2%" trend="up" />
+		<MetricCard title="AVG L" value="$181" change="-3.1%" trend="down" />
+		<MetricCard title="SHARPE" value="2.14" change="+0.08" trend="up" />
+		<MetricCard title="DD" value="$2,340" change="-2.1%" trend="down" />
+	</div>
+
+	<!-- Main Content -->
+	<div class="col-span-5 row-span-1 border-r border-slate-800">
+		<PerformanceChart />
+	</div>
+
+	<div class="col-span-5 row-span-1 border-r border-slate-800">
+		<TradesTable trades={recentTrades} />
+	</div>
+
+	<div class="col-span-2 row-span-1">
+		<StatsGrid {metrics} />
+	</div>
+</div>
