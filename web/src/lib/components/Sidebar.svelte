@@ -7,6 +7,7 @@
 
 	const menuItems = [
 		{ id: 'dashboard', label: 'Dashboard', path: '/', icon: '▪' },
+		{ id: 'accounts', label: 'Accounts', path: '/accounts', icon: '▪' },
 		{ id: 'trades', label: 'Trades', path: '/trades', icon: '▪' },
 		{ id: 'analytics', label: 'Analytics', path: '/analytics', icon: '▪' },
 		{ id: 'journal', label: 'Journal', path: '/journal', icon: '▪' },
