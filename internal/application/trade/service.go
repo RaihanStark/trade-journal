@@ -2,10 +2,15 @@ package trade
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/raihanstark/trade-journal/internal/domain/account"
 	"github.com/raihanstark/trade-journal/internal/domain/trade"
+)
+
+var (
+	ErrAccountIDRequired = errors.New("account_id is required")
 )
 
 type Service struct {
@@ -21,6 +26,11 @@ func NewService(repo trade.Repository, accountRepo account.Repository) *Service 
 }
 
 func (s *Service) CreateTrade(ctx context.Context, userID int64, req CreateTradeRequest) (*TradeDTO, error) {
+	// Validate required fields
+	if req.AccountID == nil {
+		return nil, ErrAccountIDRequired
+	}
+
 	// Parse date and time
 	date, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {

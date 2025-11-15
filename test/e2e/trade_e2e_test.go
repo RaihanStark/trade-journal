@@ -12,6 +12,50 @@ import (
 	"github.com/raihanstark/trade-journal/internal/testutil"
 )
 
+func TestE2E_Trade_Validation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test")
+	}
+
+	pg := testutil.SetupTestDatabase(t)
+	testutil.TruncateTables(t, pg.DB)
+
+	e := setupTestServer(t, pg.DB, pg.Queries)
+
+	// Register and get token
+	authToken := registerUser(t, e, "validator@example.com", "password123")
+
+	t.Run("account_id is required for creating trade", func(t *testing.T) {
+		payload := map[string]any{
+			"date":   "2025-01-15",
+			"time":   "10:00",
+			"type":   "DEPOSIT",
+			"amount": 1000.0,
+			// Missing account_id
+		}
+		body, _ := json.Marshal(payload)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/trades", bytes.NewReader(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		req.Header.Set(echo.HeaderAuthorization, "Bearer "+authToken)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("expected status 500, got %d", rec.Code)
+		}
+
+		var response map[string]any
+		json.Unmarshal(rec.Body.Bytes(), &response)
+
+		errorMsg := response["error"].(string)
+		if errorMsg != "account_id is required" {
+			t.Errorf("expected error 'account_id is required', got '%s'", errorMsg)
+		}
+	})
+}
+
 func TestE2E_Trade_DepositAndBalanceUpdate(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping e2e test")

@@ -103,6 +103,39 @@ func (s *AccountRepositorySpy) Delete(ctx context.Context, id int64, userID int6
 	return errors.New("not implemented")
 }
 
+func TestService_CreateTrade_Validation(t *testing.T) {
+	ctx := context.Background()
+	userID := int64(1)
+
+	t.Run("account_id is required for creating trade", func(t *testing.T) {
+		tradeSpy := &TradeRepositorySpy{}
+		accountSpy := &AccountRepositorySpy{}
+		service := NewService(tradeSpy, accountSpy)
+
+		amount := 1000.0
+		_, err := service.CreateTrade(ctx, userID, CreateTradeRequest{
+			AccountID: nil, // Missing account_id
+			Date:      time.Now().Format("2006-01-02"),
+			Time:      time.Now().Format("15:04"),
+			Type:      "DEPOSIT",
+			Amount:    &amount,
+		})
+
+		// Assert error
+		if err == nil {
+			t.Fatal("expected error when account_id is nil, got nil")
+		}
+		if err.Error() != "account_id is required" {
+			t.Errorf("expected error 'account_id is required', got '%v'", err)
+		}
+
+		// Verify no repository calls were made
+		if len(tradeSpy.CreateCalls) != 0 {
+			t.Errorf("expected 0 calls to Create when validation fails, got %d", len(tradeSpy.CreateCalls))
+		}
+	})
+}
+
 func TestService_CreateTrade_Deposit(t *testing.T) {
 	ctx := context.Background()
 	accountID := int64(1)
