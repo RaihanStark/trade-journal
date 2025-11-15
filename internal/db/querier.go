@@ -6,6 +6,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
@@ -15,7 +16,7 @@ type Querier interface {
 	CreateTrade(ctx context.Context, arg CreateTradeParams) (Trade, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteAccount(ctx context.Context, arg DeleteAccountParams) error
-	DeleteStrategy(ctx context.Context, arg DeleteStrategyParams) error
+	DeleteStrategy(ctx context.Context, arg DeleteStrategyParams) (sql.Result, error)
 	DeleteTrade(ctx context.Context, arg DeleteTradeParams) error
 	DeleteTradeStrategies(ctx context.Context, tradeID int32) error
 	GetAccountByID(ctx context.Context, arg GetAccountByIDParams) (GetAccountByIDRow, error)

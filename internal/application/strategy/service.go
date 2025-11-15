@@ -107,5 +107,12 @@ func (s *Service) UpdateStrategy(ctx context.Context, id int64, userID int64, re
 
 // DeleteStrategy deletes a strategy
 func (s *Service) DeleteStrategy(ctx context.Context, id int64, userID int64) error {
-	return s.repo.Delete(ctx, id, userID)
+	err := s.repo.Delete(ctx, id, userID)
+	if err != nil {
+		if err == strategy.ErrNotFound {
+			return ErrStrategyNotFound
+		}
+		return err
+	}
+	return nil
 }

@@ -106,8 +106,22 @@ func (r *StrategyRepository) Update(ctx context.Context, s *strategy.Strategy) (
 
 // Delete deletes a strategy
 func (r *StrategyRepository) Delete(ctx context.Context, id int64, userID int64) error {
-	return r.queries.DeleteStrategy(ctx, db.DeleteStrategyParams{
+	result, err := r.queries.DeleteStrategy(ctx, db.DeleteStrategyParams{
 		ID:     int32(id),
 		UserID: int32(userID),
 	})
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return strategy.ErrNotFound
+	}
+
+	return nil
 }

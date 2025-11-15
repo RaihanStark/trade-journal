@@ -18,6 +18,6 @@ SET name = $2, description = $3, updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $4
 RETURNING *;
 
--- name: DeleteStrategy :exec
+-- name: DeleteStrategy :execresult
 DELETE FROM strategies
 WHERE id = $1 AND user_id = $2;

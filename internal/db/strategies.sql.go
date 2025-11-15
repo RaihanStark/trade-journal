@@ -36,7 +36,7 @@ func (q *Queries) CreateStrategy(ctx context.Context, arg CreateStrategyParams) 
 	return i, err
 }
 
-const deleteStrategy = `-- name: DeleteStrategy :exec
+const deleteStrategy = `-- name: DeleteStrategy :execresult
 DELETE FROM strategies
 WHERE id = $1 AND user_id = $2
 `
@@ -46,9 +46,8 @@ type DeleteStrategyParams struct {
 	UserID int32 `json:"user_id"`
 }
 
-func (q *Queries) DeleteStrategy(ctx context.Context, arg DeleteStrategyParams) error {
-	_, err := q.db.ExecContext(ctx, deleteStrategy, arg.ID, arg.UserID)
-	return err
+func (q *Queries) DeleteStrategy(ctx context.Context, arg DeleteStrategyParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteStrategy, arg.ID, arg.UserID)
 }
 
 const getStrategiesByUserID = `-- name: GetStrategiesByUserID :many
