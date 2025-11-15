@@ -104,14 +104,15 @@ func (s *Service) DeleteAccount(ctx context.Context, id int64, userID int64) err
 // toDTO converts domain entity to DTO
 func toDTO(acc *account.Account) *AccountDTO {
 	return &AccountDTO{
-		ID:            acc.ID,
-		Name:          acc.Name,
-		Broker:        acc.Broker,
-		AccountNumber: acc.AccountNumber,
-		AccountType:   string(acc.AccountType),
-		Currency:      acc.Currency,
-		IsActive:      acc.IsActive,
-		CreatedAt:     acc.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:     acc.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:             acc.ID,
+		Name:           acc.Name,
+		Broker:         acc.Broker,
+		AccountNumber:  acc.AccountNumber,
+		AccountType:    string(acc.AccountType),
+		Currency:       acc.Currency,
+		CurrentBalance: acc.CurrentBalance,
+		IsActive:       acc.IsActive,
+		CreatedAt:      acc.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:      acc.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 }

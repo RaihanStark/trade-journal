@@ -22,13 +22,14 @@ type UpdateAccountRequest struct {
 
 // AccountDTO represents account data transfer object
 type AccountDTO struct {
-	ID            int64  `json:"id"`
-	Name          string `json:"name"`
-	Broker        string `json:"broker"`
-	AccountNumber string `json:"account_number"`
-	AccountType   string `json:"account_type"`
-	Currency      string `json:"currency"`
-	IsActive      bool   `json:"is_active"`
-	CreatedAt     string `json:"created_at"`
-	UpdatedAt     string `json:"updated_at"`
+	ID             int64   `json:"id"`
+	Name           string  `json:"name"`
+	Broker         string  `json:"broker"`
+	AccountNumber  string  `json:"account_number"`
+	AccountType    string  `json:"account_type"`
+	Currency       string  `json:"currency"`
+	CurrentBalance float64 `json:"current_balance"`
+	IsActive       bool    `json:"is_active"`
+	CreatedAt      string  `json:"created_at"`
+	UpdatedAt      string  `json:"updated_at"`
 }

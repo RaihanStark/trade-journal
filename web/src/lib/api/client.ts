@@ -31,6 +31,7 @@ export interface Account {
 	account_number: string;
 	account_type: 'demo' | 'live';
 	currency: string;
+	current_balance: number;
 	is_active: boolean;
 	created_at: string;
 	updated_at: string;

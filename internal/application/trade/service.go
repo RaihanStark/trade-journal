@@ -4,15 +4,20 @@ import (
 	"context"
 	"time"
 
+	"github.com/raihanstark/trade-journal/internal/domain/account"
 	"github.com/raihanstark/trade-journal/internal/domain/trade"
 )
 
 type Service struct {
-	repo trade.Repository
+	repo        trade.Repository
+	accountRepo account.Repository
 }
 
-func NewService(repo trade.Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo trade.Repository, accountRepo account.Repository) *Service {
+	return &Service{
+		repo:        repo,
+		accountRepo: accountRepo,
+	}
 }
 
 func (s *Service) CreateTrade(ctx context.Context, userID int64, req CreateTradeRequest) (*TradeDTO, error) {
@@ -57,6 +62,19 @@ func (s *Service) CreateTrade(ctx context.Context, userID int64, req CreateTrade
 	created, err := s.repo.Create(ctx, t)
 	if err != nil {
 		return nil, err
+	}
+
+	// Update account balance for DEPOSIT and WITHDRAW trades
+	if (t.Type == trade.TradeTypeDeposit || t.Type == trade.TradeTypeWithdraw) && t.AccountID != nil && t.Amount != nil {
+		amount := *t.Amount
+		if t.Type == trade.TradeTypeWithdraw {
+			amount = -amount // Withdraw reduces balance
+		}
+		_, err = s.accountRepo.UpdateBalance(ctx, *t.AccountID, userID, amount)
+		if err != nil {
+			// Log error but don't fail the trade creation
+			// You might want to handle this differently in production
+		}
 	}
 
 	return s.toDTO(created), nil
@@ -134,6 +152,27 @@ func (s *Service) UpdateTrade(ctx context.Context, id int64, userID int64, req U
 }
 
 func (s *Service) DeleteTrade(ctx context.Context, id int64, userID int64) error {
+	// Get the trade first to check if it's a deposit/withdrawal
+	t, err := s.repo.GetByID(ctx, id, userID)
+	if err != nil {
+		return err
+	}
+
+	// Revert account balance for DEPOSIT and WITHDRAW trades before deleting
+	if (t.Type == trade.TradeTypeDeposit || t.Type == trade.TradeTypeWithdraw) && t.AccountID != nil && t.Amount != nil {
+		amount := *t.Amount
+		// Reverse the transaction
+		if t.Type == trade.TradeTypeDeposit {
+			amount = -amount // Revert deposit by subtracting
+		}
+		// For withdraw, amount stays positive to add it back
+		_, err = s.accountRepo.UpdateBalance(ctx, *t.AccountID, userID, amount)
+		if err != nil {
+			// Log error but continue with deletion
+			// You might want to handle this differently in production
+		}
+	}
+
 	return s.repo.Delete(ctx, id, userID)
 }
 

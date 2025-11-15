@@ -67,7 +67,7 @@ func main() {
 	authService := auth.NewService(userRepository, tokenGenerator)
 	accountService := accountapp.NewService(accountRepository)
 	strategyService := strategyapp.NewService(strategyRepository)
-	tradeService := tradeapp.NewService(tradeRepository)
+	tradeService := tradeapp.NewService(tradeRepository, accountRepository)
 
 	// Initialize presentation layer
 	authHandler := handlers.NewAuthHandler(authService)

@@ -98,16 +98,17 @@ func (ns NullTradeType) Value() (driver.Value, error) {
 }
 
 type Account struct {
-	ID            int32        `json:"id"`
-	UserID        int32        `json:"user_id"`
-	Name          string       `json:"name"`
-	Broker        string       `json:"broker"`
-	AccountNumber string       `json:"account_number"`
-	AccountType   string       `json:"account_type"`
-	Currency      string       `json:"currency"`
-	IsActive      bool         `json:"is_active"`
-	CreatedAt     sql.NullTime `json:"created_at"`
-	UpdatedAt     sql.NullTime `json:"updated_at"`
+	ID             int32          `json:"id"`
+	UserID         int32          `json:"user_id"`
+	Name           string         `json:"name"`
+	Broker         string         `json:"broker"`
+	AccountNumber  string         `json:"account_number"`
+	AccountType    string         `json:"account_type"`
+	Currency       string         `json:"currency"`
+	IsActive       bool           `json:"is_active"`
+	CreatedAt      sql.NullTime   `json:"created_at"`
+	UpdatedAt      sql.NullTime   `json:"updated_at"`
+	CurrentBalance sql.NullString `json:"current_balance"`
 }
 
 type Strategy struct {

@@ -6,7 +6,7 @@
 	import AddTradeModal from '$lib/components/AddTradeModal.svelte';
 	import DepositModal from '$lib/components/DepositModal.svelte';
 	import WithdrawModal from '$lib/components/WithdrawModal.svelte';
-	import { apiClient, type Trade } from '$lib/api/client';
+	import { apiClient, type Trade, type Account } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth.svelte';
 
 	let isModalOpen = $state(false);
@@ -14,15 +14,37 @@
 	let isWithdrawModalOpen = $state(false);
 	let isLoading = $state(true);
 	let trades = $state<Trade[]>([]);
+	let accounts = $state<Account[]>([]);
 
 	// Filters
 	let selectedAccount = $state('all');
 	let startDate = $state('');
 	let endDate = $state('');
 
+	// Calculated totals
+	let totalBalance = $derived(() => {
+		return accounts.reduce((sum, account) => sum + account.current_balance, 0);
+	});
+
 	onMount(async () => {
+		await loadAccounts();
 		await loadTrades();
 	});
+
+	async function loadAccounts() {
+		if (!authStore.token) return;
+
+		const { data, error } = await apiClient.getAccounts(authStore.token);
+
+		if (error) {
+			console.error('Failed to load accounts:', error);
+			return;
+		}
+
+		if (data) {
+			accounts = data;
+		}
+	}
 
 	async function loadTrades() {
 		if (!authStore.token) return;
@@ -80,7 +102,8 @@
 			return;
 		}
 
-		// Reload trades after delete
+		// Reload accounts and trades after delete (to update balance for deposit/withdraw deletions)
+		await loadAccounts();
 		await loadTrades();
 	}
 
@@ -313,9 +336,9 @@
 	>
 		<div class="flex items-center gap-4">
 			<span class="font-mono text-xs text-slate-500">BAL:</span>
-			<span class="font-mono text-sm font-bold text-emerald-400">$25,420.50</span>
+			<span class="font-mono text-sm font-bold text-emerald-400">${totalBalance().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
 			<span class="font-mono text-xs text-slate-500">EQ:</span>
-			<span class="font-mono text-sm font-bold text-blue-400">$25,890.30</span>
+			<span class="font-mono text-sm font-bold text-blue-400">${totalBalance().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
 		</div>
 		<div class="flex items-center gap-2">
 			<button onclick={openDepositModal} class="bg-emerald-800 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-700">+ DEPOSIT</button>
@@ -335,9 +358,9 @@
 					class="border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300 focus:border-slate-600 focus:outline-none"
 				>
 					<option value="all">All Accounts</option>
-					<!-- TODO: Load from API -->
-					<option value="1">Demo Account - XM</option>
-					<option value="2">Live Account - IC Markets</option>
+					{#each accounts as account}
+						<option value={account.id}>{account.name} - {account.broker}</option>
+					{/each}
 				</select>
 			</div>
 
@@ -401,5 +424,5 @@
 </div>
 
 <AddTradeModal isOpen={isModalOpen} onClose={closeModal} onSuccess={loadTrades} />
-<DepositModal isOpen={isDepositModalOpen} onClose={closeDepositModal} />
-<WithdrawModal isOpen={isWithdrawModalOpen} onClose={closeWithdrawModal} />
+<DepositModal isOpen={isDepositModalOpen} onClose={closeDepositModal} onSuccess={async () => { await loadAccounts(); await loadTrades(); }} />
+<WithdrawModal isOpen={isWithdrawModalOpen} onClose={closeWithdrawModal} onSuccess={async () => { await loadAccounts(); await loadTrades(); }} />

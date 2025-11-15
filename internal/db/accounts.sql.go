@@ -7,12 +7,13 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createAccount = `-- name: CreateAccount :one
 INSERT INTO accounts (user_id, name, broker, account_number, account_type, currency, is_active)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, user_id, name, broker, account_number, account_type, currency, is_active, created_at, updated_at
+RETURNING id, user_id, name, broker, account_number, account_type, currency, current_balance, is_active, created_at, updated_at
 `
 
 type CreateAccountParams struct {
@@ -25,7 +26,21 @@ type CreateAccountParams struct {
 	IsActive      bool   `json:"is_active"`
 }
 
-func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
+type CreateAccountRow struct {
+	ID             int32          `json:"id"`
+	UserID         int32          `json:"user_id"`
+	Name           string         `json:"name"`
+	Broker         string         `json:"broker"`
+	AccountNumber  string         `json:"account_number"`
+	AccountType    string         `json:"account_type"`
+	Currency       string         `json:"currency"`
+	CurrentBalance sql.NullString `json:"current_balance"`
+	IsActive       bool           `json:"is_active"`
+	CreatedAt      sql.NullTime   `json:"created_at"`
+	UpdatedAt      sql.NullTime   `json:"updated_at"`
+}
+
+func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (CreateAccountRow, error) {
 	row := q.db.QueryRowContext(ctx, createAccount,
 		arg.UserID,
 		arg.Name,
@@ -35,7 +50,7 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 		arg.Currency,
 		arg.IsActive,
 	)
-	var i Account
+	var i CreateAccountRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -44,6 +59,7 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 		&i.AccountNumber,
 		&i.AccountType,
 		&i.Currency,
+		&i.CurrentBalance,
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -67,7 +83,7 @@ func (q *Queries) DeleteAccount(ctx context.Context, arg DeleteAccountParams) er
 }
 
 const getAccountByID = `-- name: GetAccountByID :one
-SELECT id, user_id, name, broker, account_number, account_type, currency, is_active, created_at, updated_at
+SELECT id, user_id, name, broker, account_number, account_type, currency, current_balance, is_active, created_at, updated_at
 FROM accounts
 WHERE id = $1 AND user_id = $2
 `
@@ -77,9 +93,23 @@ type GetAccountByIDParams struct {
 	UserID int32 `json:"user_id"`
 }
 
-func (q *Queries) GetAccountByID(ctx context.Context, arg GetAccountByIDParams) (Account, error) {
+type GetAccountByIDRow struct {
+	ID             int32          `json:"id"`
+	UserID         int32          `json:"user_id"`
+	Name           string         `json:"name"`
+	Broker         string         `json:"broker"`
+	AccountNumber  string         `json:"account_number"`
+	AccountType    string         `json:"account_type"`
+	Currency       string         `json:"currency"`
+	CurrentBalance sql.NullString `json:"current_balance"`
+	IsActive       bool           `json:"is_active"`
+	CreatedAt      sql.NullTime   `json:"created_at"`
+	UpdatedAt      sql.NullTime   `json:"updated_at"`
+}
+
+func (q *Queries) GetAccountByID(ctx context.Context, arg GetAccountByIDParams) (GetAccountByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getAccountByID, arg.ID, arg.UserID)
-	var i Account
+	var i GetAccountByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -88,6 +118,7 @@ func (q *Queries) GetAccountByID(ctx context.Context, arg GetAccountByIDParams) 
 		&i.AccountNumber,
 		&i.AccountType,
 		&i.Currency,
+		&i.CurrentBalance,
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -96,21 +127,35 @@ func (q *Queries) GetAccountByID(ctx context.Context, arg GetAccountByIDParams) 
 }
 
 const getAccountsByUserID = `-- name: GetAccountsByUserID :many
-SELECT id, user_id, name, broker, account_number, account_type, currency, is_active, created_at, updated_at
+SELECT id, user_id, name, broker, account_number, account_type, currency, current_balance, is_active, created_at, updated_at
 FROM accounts
 WHERE user_id = $1
 ORDER BY created_at DESC
 `
 
-func (q *Queries) GetAccountsByUserID(ctx context.Context, userID int32) ([]Account, error) {
+type GetAccountsByUserIDRow struct {
+	ID             int32          `json:"id"`
+	UserID         int32          `json:"user_id"`
+	Name           string         `json:"name"`
+	Broker         string         `json:"broker"`
+	AccountNumber  string         `json:"account_number"`
+	AccountType    string         `json:"account_type"`
+	Currency       string         `json:"currency"`
+	CurrentBalance sql.NullString `json:"current_balance"`
+	IsActive       bool           `json:"is_active"`
+	CreatedAt      sql.NullTime   `json:"created_at"`
+	UpdatedAt      sql.NullTime   `json:"updated_at"`
+}
+
+func (q *Queries) GetAccountsByUserID(ctx context.Context, userID int32) ([]GetAccountsByUserIDRow, error) {
 	rows, err := q.db.QueryContext(ctx, getAccountsByUserID, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Account
+	var items []GetAccountsByUserIDRow
 	for rows.Next() {
-		var i Account
+		var i GetAccountsByUserIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -119,6 +164,7 @@ func (q *Queries) GetAccountsByUserID(ctx context.Context, userID int32) ([]Acco
 			&i.AccountNumber,
 			&i.AccountType,
 			&i.Currency,
+			&i.CurrentBalance,
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -146,7 +192,7 @@ SET name = $3,
     is_active = $8,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
-RETURNING id, user_id, name, broker, account_number, account_type, currency, is_active, created_at, updated_at
+RETURNING id, user_id, name, broker, account_number, account_type, currency, current_balance, is_active, created_at, updated_at
 `
 
 type UpdateAccountParams struct {
@@ -160,7 +206,21 @@ type UpdateAccountParams struct {
 	IsActive      bool   `json:"is_active"`
 }
 
-func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (Account, error) {
+type UpdateAccountRow struct {
+	ID             int32          `json:"id"`
+	UserID         int32          `json:"user_id"`
+	Name           string         `json:"name"`
+	Broker         string         `json:"broker"`
+	AccountNumber  string         `json:"account_number"`
+	AccountType    string         `json:"account_type"`
+	Currency       string         `json:"currency"`
+	CurrentBalance sql.NullString `json:"current_balance"`
+	IsActive       bool           `json:"is_active"`
+	CreatedAt      sql.NullTime   `json:"created_at"`
+	UpdatedAt      sql.NullTime   `json:"updated_at"`
+}
+
+func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (UpdateAccountRow, error) {
 	row := q.db.QueryRowContext(ctx, updateAccount,
 		arg.ID,
 		arg.UserID,
@@ -171,7 +231,7 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (A
 		arg.Currency,
 		arg.IsActive,
 	)
-	var i Account
+	var i UpdateAccountRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -180,6 +240,54 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (A
 		&i.AccountNumber,
 		&i.AccountType,
 		&i.Currency,
+		&i.CurrentBalance,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateAccountBalance = `-- name: UpdateAccountBalance :one
+UPDATE accounts
+SET current_balance = current_balance + $3,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2
+RETURNING id, user_id, name, broker, account_number, account_type, currency, current_balance, is_active, created_at, updated_at
+`
+
+type UpdateAccountBalanceParams struct {
+	ID             int32          `json:"id"`
+	UserID         int32          `json:"user_id"`
+	CurrentBalance sql.NullString `json:"current_balance"`
+}
+
+type UpdateAccountBalanceRow struct {
+	ID             int32          `json:"id"`
+	UserID         int32          `json:"user_id"`
+	Name           string         `json:"name"`
+	Broker         string         `json:"broker"`
+	AccountNumber  string         `json:"account_number"`
+	AccountType    string         `json:"account_type"`
+	Currency       string         `json:"currency"`
+	CurrentBalance sql.NullString `json:"current_balance"`
+	IsActive       bool           `json:"is_active"`
+	CreatedAt      sql.NullTime   `json:"created_at"`
+	UpdatedAt      sql.NullTime   `json:"updated_at"`
+}
+
+func (q *Queries) UpdateAccountBalance(ctx context.Context, arg UpdateAccountBalanceParams) (UpdateAccountBalanceRow, error) {
+	row := q.db.QueryRowContext(ctx, updateAccountBalance, arg.ID, arg.UserID, arg.CurrentBalance)
+	var i UpdateAccountBalanceRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Broker,
+		&i.AccountNumber,
+		&i.AccountType,
+		&i.Currency,
+		&i.CurrentBalance,
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,

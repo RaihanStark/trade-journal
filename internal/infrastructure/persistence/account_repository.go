@@ -35,16 +35,17 @@ func (r *AccountRepository) Create(ctx context.Context, acc *account.Account) (*
 	}
 
 	return &account.Account{
-		ID:            int64(result.ID),
-		UserID:        int64(result.UserID),
-		Name:          result.Name,
-		Broker:        result.Broker,
-		AccountNumber: result.AccountNumber,
-		AccountType:   account.AccountType(result.AccountType),
-		Currency:      result.Currency,
-		IsActive:      result.IsActive,
-		CreatedAt:     result.CreatedAt.Time,
-		UpdatedAt:     result.UpdatedAt.Time,
+		ID:             int64(result.ID),
+		UserID:         int64(result.UserID),
+		Name:           result.Name,
+		Broker:         result.Broker,
+		AccountNumber:  result.AccountNumber,
+		AccountType:    account.AccountType(result.AccountType),
+		Currency:       result.Currency,
+		CurrentBalance: parseFloat(result.CurrentBalance.String),
+		IsActive:       result.IsActive,
+		CreatedAt:      result.CreatedAt.Time,
+		UpdatedAt:      result.UpdatedAt.Time,
 	}, nil
 }
 
@@ -59,16 +60,17 @@ func (r *AccountRepository) GetByID(ctx context.Context, id int64, userID int64)
 	}
 
 	return &account.Account{
-		ID:            int64(result.ID),
-		UserID:        int64(result.UserID),
-		Name:          result.Name,
-		Broker:        result.Broker,
-		AccountNumber: result.AccountNumber,
-		AccountType:   account.AccountType(result.AccountType),
-		Currency:      result.Currency,
-		IsActive:      result.IsActive,
-		CreatedAt:     result.CreatedAt.Time,
-		UpdatedAt:     result.UpdatedAt.Time,
+		ID:             int64(result.ID),
+		UserID:         int64(result.UserID),
+		Name:           result.Name,
+		Broker:         result.Broker,
+		AccountNumber:  result.AccountNumber,
+		AccountType:    account.AccountType(result.AccountType),
+		Currency:       result.Currency,
+		CurrentBalance: parseFloat(result.CurrentBalance.String),
+		IsActive:       result.IsActive,
+		CreatedAt:      result.CreatedAt.Time,
+		UpdatedAt:      result.UpdatedAt.Time,
 	}, nil
 }
 
@@ -82,16 +84,17 @@ func (r *AccountRepository) GetByUserID(ctx context.Context, userID int64) ([]*a
 	accounts := make([]*account.Account, len(results))
 	for i, result := range results {
 		accounts[i] = &account.Account{
-			ID:            int64(result.ID),
-			UserID:        int64(result.UserID),
-			Name:          result.Name,
-			Broker:        result.Broker,
-			AccountNumber: result.AccountNumber,
-			AccountType:   account.AccountType(result.AccountType),
-			Currency:      result.Currency,
-			IsActive:      result.IsActive,
-			CreatedAt:     result.CreatedAt.Time,
-			UpdatedAt:     result.UpdatedAt.Time,
+			ID:             int64(result.ID),
+			UserID:         int64(result.UserID),
+			Name:           result.Name,
+			Broker:         result.Broker,
+			AccountNumber:  result.AccountNumber,
+			AccountType:    account.AccountType(result.AccountType),
+			Currency:       result.Currency,
+			CurrentBalance: parseFloat(result.CurrentBalance.String),
+			IsActive:       result.IsActive,
+			CreatedAt:      result.CreatedAt.Time,
+			UpdatedAt:      result.UpdatedAt.Time,
 		}
 	}
 
@@ -115,16 +118,43 @@ func (r *AccountRepository) Update(ctx context.Context, acc *account.Account) (*
 	}
 
 	return &account.Account{
-		ID:            int64(result.ID),
-		UserID:        int64(result.UserID),
-		Name:          result.Name,
-		Broker:        result.Broker,
-		AccountNumber: result.AccountNumber,
-		AccountType:   account.AccountType(result.AccountType),
-		Currency:      result.Currency,
-		IsActive:      result.IsActive,
-		CreatedAt:     result.CreatedAt.Time,
-		UpdatedAt:     result.UpdatedAt.Time,
+		ID:             int64(result.ID),
+		UserID:         int64(result.UserID),
+		Name:           result.Name,
+		Broker:         result.Broker,
+		AccountNumber:  result.AccountNumber,
+		AccountType:    account.AccountType(result.AccountType),
+		Currency:       result.Currency,
+		CurrentBalance: parseFloat(result.CurrentBalance.String),
+		IsActive:       result.IsActive,
+		CreatedAt:      result.CreatedAt.Time,
+		UpdatedAt:      result.UpdatedAt.Time,
+	}, nil
+}
+
+// UpdateBalance updates an account's balance by the given amount
+func (r *AccountRepository) UpdateBalance(ctx context.Context, id int64, userID int64, amount float64) (*account.Account, error) {
+	result, err := r.queries.UpdateAccountBalance(ctx, db.UpdateAccountBalanceParams{
+		ID:             int32(id),
+		UserID:         int32(userID),
+		CurrentBalance: floatToNullString(amount),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &account.Account{
+		ID:             int64(result.ID),
+		UserID:         int64(result.UserID),
+		Name:           result.Name,
+		Broker:         result.Broker,
+		AccountNumber:  result.AccountNumber,
+		AccountType:    account.AccountType(result.AccountType),
+		Currency:       result.Currency,
+		CurrentBalance: parseFloat(result.CurrentBalance.String),
+		IsActive:       result.IsActive,
+		CreatedAt:      result.CreatedAt.Time,
+		UpdatedAt:      result.UpdatedAt.Time,
 	}, nil
 }
 

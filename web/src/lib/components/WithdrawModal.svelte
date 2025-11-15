@@ -1,23 +1,70 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
+	import { apiClient, type Account } from '$lib/api/client';
+	import { authStore } from '$lib/stores/auth.svelte';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		isOpen: boolean;
 		onClose: () => void;
+		onSuccess?: () => void;
 	}
 
-	let { isOpen, onClose }: Props = $props();
+	let { isOpen, onClose, onSuccess }: Props = $props();
 
 	let amount = $state('');
 	let accountId = $state('');
 	let date = $state(new Date().toISOString().split('T')[0]);
 	let notes = $state('');
+	let accounts = $state<Account[]>([]);
+	let isSubmitting = $state(false);
 
-	function handleSubmit() {
-		console.log('Withdraw:', { amount, accountId, date, notes });
-		// TODO: Implement withdrawal submission
+	onMount(async () => {
+		await loadAccounts();
+	});
+
+	async function loadAccounts() {
+		if (!authStore.token) return;
+		const { data } = await apiClient.getAccounts(authStore.token);
+		if (data) {
+			accounts = data;
+		}
+	}
+
+	async function handleSubmit() {
+		if (!authStore.token || !accountId || !amount) return;
+
+		isSubmitting = true;
+
+		const { data, error } = await apiClient.createTrade({
+			account_id: parseInt(accountId),
+			date,
+			time: new Date().toTimeString().split(' ')[0].substring(0, 5),
+			pair: '',
+			type: 'WITHDRAW',
+			entry: 0,
+			exit: null,
+			lots: 0,
+			stop_loss: null,
+			take_profit: null,
+			notes,
+			mistakes: '',
+			amount: parseFloat(amount),
+			strategy_ids: []
+		}, authStore.token);
+
+		isSubmitting = false;
+
+		if (error) {
+			console.error('Failed to create withdrawal:', error);
+			return;
+		}
+
 		resetForm();
 		onClose();
+		if (onSuccess) {
+			onSuccess();
+		}
 	}
 
 	function resetForm() {
@@ -42,9 +89,9 @@
 					class="mt-1 w-full border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-red-500 focus:outline-none"
 				>
 					<option value="">Select account</option>
-					<!-- TODO: Load accounts from API -->
-					<option value="1">Demo Account - XM</option>
-					<option value="2">Live Account - IC Markets</option>
+					{#each accounts as account}
+						<option value={account.id}>{account.name} - {account.broker}</option>
+					{/each}
 				</select>
 			</div>
 

@@ -51,6 +51,7 @@ CREATE TABLE public.accounts (
     is_active boolean DEFAULT true NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    current_balance numeric(20,2) DEFAULT 0,
     CONSTRAINT accounts_account_type_check CHECK (((account_type)::text = ANY ((ARRAY['demo'::character varying, 'live'::character varying])::text[])))
 );
 
@@ -384,4 +385,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250115000002'),
     ('20250115000003'),
     ('20250115000004'),
-    ('20250115000005');
+    ('20250115000005'),
+    ('20250115000006');

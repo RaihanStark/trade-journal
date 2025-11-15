@@ -230,9 +230,9 @@
 								</div>
 							</td>
 							<td class="px-3 py-2 text-right">
-								{#if trade.pl !== null}
-									<span class={getPLColor(trade.pl) + ' font-mono text-base font-bold'}>
-										{trade.pl > 0 ? '+' : ''}${trade.pl.toLocaleString('en-US')}
+								{#if trade.amount !== null && trade.amount !== undefined}
+									<span class="font-mono text-base font-bold {trade.type === 'DEPOSIT' ? 'text-emerald-400' : 'text-red-400'}">
+										{trade.type === 'DEPOSIT' ? '+' : '-'}${Math.abs(trade.amount).toLocaleString('en-US')}
 									</span>
 								{:else}
 									<span class="font-mono text-base text-slate-600">-</span>

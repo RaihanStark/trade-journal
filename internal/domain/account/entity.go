@@ -12,16 +12,17 @@ const (
 
 // Account represents a trading account in the system
 type Account struct {
-	ID            int64
-	UserID        int64
-	Name          string
-	Broker        string
-	AccountNumber string
-	AccountType   AccountType
-	Currency      string
-	IsActive      bool
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID             int64
+	UserID         int64
+	Name           string
+	Broker         string
+	AccountNumber  string
+	AccountType    AccountType
+	Currency       string
+	CurrentBalance float64
+	IsActive       bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // NewAccount creates a new account instance
