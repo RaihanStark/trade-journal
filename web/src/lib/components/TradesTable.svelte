@@ -6,7 +6,7 @@
 		date: string;
 		time: string;
 		pair: string;
-		type: 'BUY' | 'SELL';
+		type: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAW';
 		entry: number;
 		exit: number | null;
 		lots: number;
@@ -19,6 +19,11 @@
 		notes?: string;
 		strategy?: string;
 		mistakes?: string;
+		amount?: number;
+	}
+
+	function isTransaction(trade: Trade): boolean {
+		return trade.type === 'DEPOSIT' || trade.type === 'WITHDRAW';
 	}
 
 	interface Props {
@@ -94,102 +99,148 @@
 			</thead>
 			<tbody>
 				{#each trades as trade (trade.id)}
-					<!-- Main Row -->
-					<tr
-						class="cursor-pointer border-b border-slate-800/50 hover:bg-slate-800/30 {getTradeStatus(
-							trade
-						) === 'ongoing'
-							? 'bg-blue-950/20'
-							: ''}"
-						onclick={() => toggleRow(trade.id)}
-					>
-						<td class="px-3 py-2">
-							<svg
-								class="h-4 w-4 text-slate-500 transition-transform {expandedRows.has(trade.id)
-									? 'rotate-90'
-									: ''}"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-							>
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"
-								></path>
-							</svg>
-						</td>
-						<td class="px-3 py-2 font-mono text-sm text-slate-400">{trade.date}</td>
-						<td class="px-3 py-2 font-mono text-sm text-slate-500">{trade.time}</td>
-						<td class="px-3 py-2 font-mono text-sm font-bold text-slate-200">{trade.pair}</td>
-						<td class="px-3 py-2">
-							<span
-								class="px-2 py-0.5 font-mono text-xs font-bold {trade.type === 'BUY'
-									? 'bg-emerald-500/20 text-emerald-400'
-									: 'bg-red-500/20 text-red-400'}"
-							>
-								{trade.type}
-							</span>
-						</td>
-						<td class="px-3 py-2 text-right font-mono text-sm text-slate-300">
-							{trade.entry.toFixed(trade.pair.includes('JPY') ? 2 : 4)}
-						</td>
-						<td class="px-3 py-2 text-right font-mono text-sm text-slate-300">
-							{#if trade.exit !== null}
-								{trade.exit.toFixed(trade.pair.includes('JPY') ? 2 : 4)}
-							{:else}
-								<span class="text-slate-600">-</span>
-							{/if}
-						</td>
-						<td class="px-3 py-2 text-right font-mono text-sm text-slate-300">
-							{trade.lots.toFixed(2)}
-						</td>
-						<td class="px-3 py-2 text-right">
-							{#if trade.pips !== null}
-								<span class={getPLColor(trade.pips) + ' font-mono text-sm font-bold'}>
-									{trade.pips > 0 ? '+' : ''}{trade.pips}
-								</span>
-							{:else}
-								<span class="font-mono text-sm text-slate-600">-</span>
-							{/if}
-						</td>
-						<td class="px-3 py-2 text-right">
-							{#if trade.pl !== null}
-								<span class={getPLColor(trade.pl) + ' font-mono text-base font-bold'}>
-									{trade.pl > 0 ? '+' : ''}${trade.pl.toFixed(0)}
-								</span>
-							{:else}
-								<span class="font-mono text-base text-slate-600">-</span>
-							{/if}
-						</td>
-						<td class="px-3 py-2 text-right">
-							{#if trade.rr !== null}
-								<span class={getPLColor(trade.rr) + ' font-mono text-sm'}>
-									{trade.rr > 0 ? '+' : ''}{trade.rr.toFixed(1)}
-								</span>
-							{:else}
-								<span class="font-mono text-sm text-slate-600">-</span>
-							{/if}
-						</td>
-						<td class="px-3 py-2 text-center">
-							{#if getTradeStatus(trade) === 'ongoing'}
+					{#if isTransaction(trade)}
+						<!-- Transaction Row (Deposit/Withdraw) -->
+						<tr
+							class="border-b border-slate-800/50 hover:bg-slate-800/30 {trade.type === 'DEPOSIT'
+								? 'bg-emerald-950/10'
+								: 'bg-red-950/10'}"
+						>
+							<td class="px-3 py-2"></td>
+							<td class="px-3 py-2 font-mono text-sm text-slate-400">{trade.date}</td>
+							<td class="px-3 py-2 font-mono text-sm text-slate-500">{trade.time}</td>
+							<td class="px-3 py-2 font-mono text-sm font-bold text-slate-200" colspan="6">
+								<div class="flex items-center gap-3">
+									<span
+										class="px-2 py-0.5 font-mono text-xs font-bold {trade.type === 'DEPOSIT'
+											? 'bg-blue-500/20 text-blue-400'
+											: 'bg-orange-500/20 text-orange-400'}"
+									>
+										{trade.type}
+									</span>
+									{#if trade.notes}
+										<span class="text-sm text-slate-400">{trade.notes}</span>
+									{/if}
+								</div>
+							</td>
+							<td class="px-3 py-2 text-right">
+								{#if trade.pl !== null}
+									<span class={getPLColor(trade.pl) + ' font-mono text-base font-bold'}>
+										{trade.pl > 0 ? '+' : ''}${trade.pl.toFixed(0)}
+									</span>
+								{:else}
+									<span class="font-mono text-base text-slate-600">-</span>
+								{/if}
+							</td>
+							<td class="px-3 py-2"></td>
+							<td class="px-3 py-2 text-center">
 								<span
-									class="inline-block bg-blue-600 px-2 py-0.5 font-mono text-xs font-bold uppercase text-white"
+									class="inline-block {trade.type === 'DEPOSIT'
+										? 'bg-blue-600'
+										: 'bg-orange-600'} px-2 py-0.5 font-mono text-xs font-bold uppercase text-white"
 								>
-									OPEN
+									{trade.type}
 								</span>
-							{:else if getTradeStatus(trade) === 'win'}
+							</td>
+						</tr>
+					{:else}
+						<!-- Trade Row -->
+						<tr
+							class="cursor-pointer border-b border-slate-800/50 hover:bg-slate-800/30 {getTradeStatus(
+								trade
+							) === 'ongoing'
+								? 'bg-blue-950/20'
+								: ''}"
+							onclick={() => toggleRow(trade.id)}
+						>
+							<td class="px-3 py-2">
+								<svg
+									class="h-4 w-4 text-slate-500 transition-transform {expandedRows.has(trade.id)
+										? 'rotate-90'
+										: ''}"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"
+									></path>
+								</svg>
+							</td>
+							<td class="px-3 py-2 font-mono text-sm text-slate-400">{trade.date}</td>
+							<td class="px-3 py-2 font-mono text-sm text-slate-500">{trade.time}</td>
+							<td class="px-3 py-2 font-mono text-sm font-bold text-slate-200">{trade.pair}</td>
+							<td class="px-3 py-2">
 								<span
-									class="inline-block bg-emerald-600 px-2 py-0.5 font-mono text-xs font-bold uppercase text-white"
+									class="px-2 py-0.5 font-mono text-xs font-bold {trade.type === 'BUY'
+										? 'bg-emerald-500/20 text-emerald-400'
+										: 'bg-red-500/20 text-red-400'}"
 								>
-									WIN
+									{trade.type}
 								</span>
-							{:else}
-								<span
-									class="inline-block bg-red-600 px-2 py-0.5 font-mono text-xs font-bold uppercase text-white"
-								>
-									LOSS
-								</span>
-							{/if}
-						</td>
-					</tr>
+							</td>
+							<td class="px-3 py-2 text-right font-mono text-sm text-slate-300">
+								{trade.entry.toFixed(trade.pair.includes('JPY') ? 2 : 4)}
+							</td>
+							<td class="px-3 py-2 text-right font-mono text-sm text-slate-300">
+								{#if trade.exit !== null}
+									{trade.exit.toFixed(trade.pair.includes('JPY') ? 2 : 4)}
+								{:else}
+									<span class="text-slate-600">-</span>
+								{/if}
+							</td>
+							<td class="px-3 py-2 text-right font-mono text-sm text-slate-300">
+								{trade.lots.toFixed(2)}
+							</td>
+							<td class="px-3 py-2 text-right">
+								{#if trade.pips !== null}
+									<span class={getPLColor(trade.pips) + ' font-mono text-sm font-bold'}>
+										{trade.pips > 0 ? '+' : ''}{trade.pips}
+									</span>
+								{:else}
+									<span class="font-mono text-sm text-slate-600">-</span>
+								{/if}
+							</td>
+							<td class="px-3 py-2 text-right">
+								{#if trade.pl !== null}
+									<span class={getPLColor(trade.pl) + ' font-mono text-base font-bold'}>
+										{trade.pl > 0 ? '+' : ''}${trade.pl.toFixed(0)}
+									</span>
+								{:else}
+									<span class="font-mono text-base text-slate-600">-</span>
+								{/if}
+							</td>
+							<td class="px-3 py-2 text-right">
+								{#if trade.rr !== null}
+									<span class={getPLColor(trade.rr) + ' font-mono text-sm'}>
+										{trade.rr > 0 ? '+' : ''}{trade.rr.toFixed(1)}
+									</span>
+								{:else}
+									<span class="font-mono text-sm text-slate-600">-</span>
+								{/if}
+							</td>
+							<td class="px-3 py-2 text-center">
+								{#if getTradeStatus(trade) === 'ongoing'}
+									<span
+										class="inline-block bg-blue-600 px-2 py-0.5 font-mono text-xs font-bold uppercase text-white"
+									>
+										OPEN
+									</span>
+								{:else if getTradeStatus(trade) === 'win'}
+									<span
+										class="inline-block bg-emerald-600 px-2 py-0.5 font-mono text-xs font-bold uppercase text-white"
+									>
+										WIN
+									</span>
+								{:else}
+									<span
+										class="inline-block bg-red-600 px-2 py-0.5 font-mono text-xs font-bold uppercase text-white"
+									>
+										LOSS
+									</span>
+								{/if}
+							</td>
+						</tr>
+					{/if}
 
 					<!-- Expanded Details Row -->
 					{#if expandedRows.has(trade.id)}

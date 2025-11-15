@@ -61,7 +61,7 @@
 		date: string;
 		time: string;
 		pair: string;
-		type: 'BUY' | 'SELL';
+		type: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAW';
 		entry: number;
 		exit: number | null;
 		lots: number;
@@ -73,7 +73,40 @@
 		takeProfit?: number;
 		notes?: string;
 		strategy?: string;
+		amount?: number;
 	}> = [
+		{
+			id: 101,
+			date: '2025-01-14',
+			time: '10:30',
+			pair: '-',
+			type: 'DEPOSIT' as const,
+			entry: 0,
+			exit: null,
+			lots: 0,
+			pips: null,
+			pl: 5000,
+			rr: null,
+			status: 'closed' as const,
+			notes: 'Initial deposit to start trading',
+			amount: 5000
+		},
+		{
+			id: 102,
+			date: '2025-01-13',
+			time: '16:45',
+			pair: '-',
+			type: 'WITHDRAW' as const,
+			entry: 0,
+			exit: null,
+			lots: 0,
+			pips: null,
+			pl: -1000,
+			rr: null,
+			status: 'closed' as const,
+			notes: 'Partial profit withdrawal',
+			amount: 1000
+		},
 		{
 			id: 1,
 			date: '2025-01-13',
