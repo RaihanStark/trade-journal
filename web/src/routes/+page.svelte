@@ -198,14 +198,12 @@
 	];
 </script>
 
-<div class="grid h-screen grid-cols-12 grid-rows-[auto_auto_1fr] bg-slate-950">
+<div class="grid h-full grid-cols-12 grid-rows-[auto_auto_1fr] bg-slate-950">
 	<!-- Header -->
 	<div
 		class="col-span-12 flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-2"
 	>
 		<div class="flex items-center gap-4">
-			<span class="text-sm font-bold text-slate-100">FOREX JOURNAL</span>
-			<div class="h-4 w-px bg-slate-700"></div>
 			<span class="font-mono text-xs text-slate-500">BAL:</span>
 			<span class="font-mono text-sm font-bold text-emerald-400">$25,420.50</span>
 			<span class="font-mono text-xs text-slate-500">EQ:</span>
