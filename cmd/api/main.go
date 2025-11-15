@@ -10,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	_ "github.com/lib/pq"
+	accountapp "github.com/raihanstark/trade-journal/internal/application/account"
 	"github.com/raihanstark/trade-journal/internal/application/auth"
 	"github.com/raihanstark/trade-journal/internal/db"
 	"github.com/raihanstark/trade-journal/internal/infrastructure/http/handlers"
@@ -55,13 +56,16 @@ func main() {
 	// Initialize infrastructure layer
 	queries := db.New(dbConn)
 	userRepository := persistence.NewUserRepository(queries)
+	accountRepository := persistence.NewAccountRepository(queries)
 	tokenGenerator := security.NewJWTTokenGenerator(jwtSecret)
 
 	// Initialize application layer
 	authService := auth.NewService(userRepository, tokenGenerator)
+	accountService := accountapp.NewService(accountRepository)
 
 	// Initialize presentation layer
 	authHandler := handlers.NewAuthHandler(authService)
+	accountHandler := handlers.NewAccountHandler(accountService)
 
 	// Create Echo instance
 	e := echo.New()
@@ -69,7 +73,12 @@ func main() {
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"http://localhost:5173", "http://localhost:5174", "http://localhost:3000"},
+		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.OPTIONS},
+		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowCredentials: true,
+	}))
 
 	// Public routes
 	e.POST("/api/auth/register", authHandler.Register)
@@ -79,7 +88,7 @@ func main() {
 	protected := e.Group("/api")
 	protected.Use(custommiddleware.JWTAuth(tokenGenerator))
 
-	// Example protected route
+	// User routes
 	protected.GET("/me", func(c echo.Context) error {
 		userID := c.Get("user_id").(int64)
 		email := c.Get("email").(string)
@@ -88,6 +97,13 @@ func main() {
 			"email":   email,
 		})
 	})
+
+	// Account routes
+	protected.POST("/accounts", accountHandler.CreateAccount)
+	protected.GET("/accounts", accountHandler.GetAccounts)
+	protected.GET("/accounts/:id", accountHandler.GetAccount)
+	protected.PUT("/accounts/:id", accountHandler.UpdateAccount)
+	protected.DELETE("/accounts/:id", accountHandler.DeleteAccount)
 
 	// Start server
 	log.Printf("Server starting on port %s", port)

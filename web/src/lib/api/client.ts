@@ -24,6 +24,36 @@ export interface LoginRequest {
 	password: string;
 }
 
+export interface Account {
+	id: number;
+	name: string;
+	broker: string;
+	account_number: string;
+	account_type: 'demo' | 'live';
+	currency: string;
+	is_active: boolean;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface CreateAccountRequest {
+	name: string;
+	broker: string;
+	account_number: string;
+	account_type: 'demo' | 'live';
+	currency: string;
+	is_active: boolean;
+}
+
+export interface UpdateAccountRequest {
+	name: string;
+	broker: string;
+	account_number: string;
+	account_type: 'demo' | 'live';
+	currency: string;
+	is_active: boolean;
+}
+
 class ApiClient {
 	private baseUrl: string;
 
@@ -73,6 +103,61 @@ class ApiClient {
 	async getCurrentUser(token: string): Promise<{ data?: User; error?: string }> {
 		return this.request<User>('/api/me', {
 			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+	}
+
+	// Account APIs
+	async getAccounts(token: string): Promise<{ data?: Account[]; error?: string }> {
+		return this.request<Account[]>('/api/accounts', {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+	}
+
+	async getAccount(id: number, token: string): Promise<{ data?: Account; error?: string }> {
+		return this.request<Account>(`/api/accounts/${id}`, {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+	}
+
+	async createAccount(
+		req: CreateAccountRequest,
+		token: string
+	): Promise<{ data?: Account; error?: string }> {
+		return this.request<Account>('/api/accounts', {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify(req)
+		});
+	}
+
+	async updateAccount(
+		id: number,
+		req: UpdateAccountRequest,
+		token: string
+	): Promise<{ data?: Account; error?: string }> {
+		return this.request<Account>(`/api/accounts/${id}`, {
+			method: 'PUT',
+			headers: {
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify(req)
+		});
+	}
+
+	async deleteAccount(id: number, token: string): Promise<{ data?: any; error?: string }> {
+		return this.request<any>(`/api/accounts/${id}`, {
+			method: 'DELETE',
 			headers: {
 				Authorization: `Bearer ${token}`
 			}

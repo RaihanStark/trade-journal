@@ -1,7 +1,10 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import AddAccountModal from '$lib/components/AddAccountModal.svelte';
 	import EditAccountModal from '$lib/components/EditAccountModal.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+	import { apiClient } from '$lib/api/client';
+	import { authStore } from '$lib/stores/auth.svelte';
 
 	interface Account {
 		id: number;
@@ -18,36 +21,38 @@
 	let isConfirmOpen = $state(false);
 	let accountToDelete = $state<number | null>(null);
 	let accountToEdit = $state<Account | null>(null);
+	let isLoading = $state(true);
 
-	let accounts = $state<Account[]>([
-		{
-			id: 1,
-			name: 'Main Demo Account',
-			broker: 'OANDA',
-			accountNumber: 'DEMO-12345',
-			accountType: 'demo',
-			currency: 'USD',
-			isActive: true
-		},
-		{
-			id: 2,
-			name: 'Live Trading Account',
-			broker: 'IC Markets',
-			accountNumber: 'LIVE-67890',
-			accountType: 'live',
-			currency: 'USD',
-			isActive: true
-		},
-		{
-			id: 3,
-			name: 'Secondary Demo',
-			broker: 'XM',
-			accountNumber: 'DEMO-54321',
-			accountType: 'demo',
-			currency: 'EUR',
-			isActive: false
+	let accounts = $state<Account[]>([]);
+
+	onMount(async () => {
+		await loadAccounts();
+	});
+
+	async function loadAccounts() {
+		if (!authStore.token) return;
+
+		isLoading = true;
+		const { data, error } = await apiClient.getAccounts(authStore.token);
+		isLoading = false;
+
+		if (error) {
+			console.error('Failed to load accounts:', error);
+			return;
 		}
-	]);
+
+		if (data) {
+			accounts = data.map((acc) => ({
+				id: acc.id,
+				name: acc.name,
+				broker: acc.broker,
+				accountNumber: acc.account_number,
+				accountType: acc.account_type,
+				currency: acc.currency,
+				isActive: acc.is_active
+			}));
+		}
+	}
 
 	function openAddModal() {
 		isAddModalOpen = true;
@@ -67,26 +72,113 @@
 		isEditModalOpen = false;
 	}
 
-	function handleAddAccount(account: Omit<Account, 'id'>) {
-		const newAccount: Account = {
-			...account,
-			id: accounts.length + 1
-		};
-		accounts = [...accounts, newAccount];
+	async function handleAddAccount(account: Omit<Account, 'id'>) {
+		if (!authStore.token) return;
+
+		const { data, error } = await apiClient.createAccount(
+			{
+				name: account.name,
+				broker: account.broker,
+				account_number: account.accountNumber,
+				account_type: account.accountType,
+				currency: account.currency,
+				is_active: account.isActive
+			},
+			authStore.token
+		);
+
+		if (error) {
+			console.error('Failed to create account:', error);
+			return;
+		}
+
+		if (data) {
+			accounts = [
+				...accounts,
+				{
+					id: data.id,
+					name: data.name,
+					broker: data.broker,
+					accountNumber: data.account_number,
+					accountType: data.account_type,
+					currency: data.currency,
+					isActive: data.is_active
+				}
+			];
+		}
+
 		closeAddModal();
 	}
 
-	function handleEditAccount(updatedAccount: Account) {
-		accounts = accounts.map((acc) =>
-			acc.id === updatedAccount.id ? updatedAccount : acc
+	async function handleEditAccount(updatedAccount: Account) {
+		if (!authStore.token) return;
+
+		const { data, error } = await apiClient.updateAccount(
+			updatedAccount.id,
+			{
+				name: updatedAccount.name,
+				broker: updatedAccount.broker,
+				account_number: updatedAccount.accountNumber,
+				account_type: updatedAccount.accountType,
+				currency: updatedAccount.currency,
+				is_active: updatedAccount.isActive
+			},
+			authStore.token
 		);
+
+		if (error) {
+			console.error('Failed to update account:', error);
+			return;
+		}
+
+		if (data) {
+			accounts = accounts.map((acc) =>
+				acc.id === data.id
+					? {
+							id: data.id,
+							name: data.name,
+							broker: data.broker,
+							accountNumber: data.account_number,
+							accountType: data.account_type,
+							currency: data.currency,
+							isActive: data.is_active
+						}
+					: acc
+			);
+		}
+
 		closeEditModal();
 	}
 
-	function toggleAccountStatus(id: number) {
-		accounts = accounts.map((acc) =>
-			acc.id === id ? { ...acc, isActive: !acc.isActive } : acc
+	async function toggleAccountStatus(id: number) {
+		const account = accounts.find((acc) => acc.id === id);
+		if (!account || !authStore.token) return;
+
+		const updatedAccount = { ...account, isActive: !account.isActive };
+
+		const { data, error } = await apiClient.updateAccount(
+			id,
+			{
+				name: updatedAccount.name,
+				broker: updatedAccount.broker,
+				account_number: updatedAccount.accountNumber,
+				account_type: updatedAccount.accountType,
+				currency: updatedAccount.currency,
+				is_active: updatedAccount.isActive
+			},
+			authStore.token
 		);
+
+		if (error) {
+			console.error('Failed to toggle account status:', error);
+			return;
+		}
+
+		if (data) {
+			accounts = accounts.map((acc) =>
+				acc.id === id ? { ...acc, isActive: data.is_active } : acc
+			);
+		}
 	}
 
 	function openDeleteConfirm(id: number) {
@@ -94,11 +186,18 @@
 		isConfirmOpen = true;
 	}
 
-	function handleDeleteConfirm() {
-		if (accountToDelete !== null) {
-			accounts = accounts.filter((acc) => acc.id !== accountToDelete);
-			accountToDelete = null;
+	async function handleDeleteConfirm() {
+		if (accountToDelete === null || !authStore.token) return;
+
+		const { error } = await apiClient.deleteAccount(accountToDelete, authStore.token);
+
+		if (error) {
+			console.error('Failed to delete account:', error);
+			return;
 		}
+
+		accounts = accounts.filter((acc) => acc.id !== accountToDelete);
+		accountToDelete = null;
 		isConfirmOpen = false;
 	}
 
@@ -127,7 +226,13 @@
 
 	<!-- Accounts Table -->
 	<div class="flex-1 overflow-auto">
-		{#if accounts.length === 0}
+		{#if isLoading}
+			<div class="flex h-64 items-center justify-center">
+				<div class="text-center">
+					<p class="text-slate-500">Loading accounts...</p>
+				</div>
+			</div>
+		{:else if accounts.length === 0}
 			<div class="flex h-64 items-center justify-center">
 				<div class="text-center">
 					<p class="text-slate-500">No trading accounts yet</p>
