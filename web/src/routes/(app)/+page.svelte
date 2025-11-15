@@ -3,8 +3,17 @@
 	import TradesTable from '$lib/components/TradesTable.svelte';
 	import StatsGrid from '$lib/components/StatsGrid.svelte';
 	import AddTradeModal from '$lib/components/AddTradeModal.svelte';
+	import DepositModal from '$lib/components/DepositModal.svelte';
+	import WithdrawModal from '$lib/components/WithdrawModal.svelte';
 
 	let isModalOpen = $state(false);
+	let isDepositModalOpen = $state(false);
+	let isWithdrawModalOpen = $state(false);
+
+	// Filters
+	let selectedAccount = $state('all');
+	let startDate = $state('');
+	let endDate = $state('');
 
 	function openModal() {
 		isModalOpen = true;
@@ -12,6 +21,28 @@
 
 	function closeModal() {
 		isModalOpen = false;
+	}
+
+	function openDepositModal() {
+		isDepositModalOpen = true;
+	}
+
+	function closeDepositModal() {
+		isDepositModalOpen = false;
+	}
+
+	function openWithdrawModal() {
+		isWithdrawModalOpen = true;
+	}
+
+	function closeWithdrawModal() {
+		isWithdrawModalOpen = false;
+	}
+
+	function clearFilters() {
+		selectedAccount = 'all';
+		startDate = '';
+		endDate = '';
 	}
 
 	const metrics = {
@@ -198,7 +229,7 @@
 	];
 </script>
 
-<div class="grid h-full grid-cols-12 grid-rows-[auto_auto_1fr] bg-slate-950">
+<div class="grid h-full grid-cols-12 grid-rows-[auto_auto_auto_1fr] bg-slate-950">
 	<!-- Header -->
 	<div
 		class="col-span-12 flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-2"
@@ -209,7 +240,59 @@
 			<span class="font-mono text-xs text-slate-500">EQ:</span>
 			<span class="font-mono text-sm font-bold text-blue-400">$25,890.30</span>
 		</div>
-		<button onclick={openModal} class="bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700">+ TRADE</button>
+		<div class="flex items-center gap-2">
+			<button onclick={openDepositModal} class="bg-emerald-800 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-700">+ DEPOSIT</button>
+			<button onclick={openWithdrawModal} class="bg-red-800 px-3 py-1.5 text-xs text-red-100 hover:bg-red-700">- WITHDRAW</button>
+			<button onclick={openModal} class="bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700">+ TRADE</button>
+		</div>
+	</div>
+
+	<!-- Filters -->
+	<div class="col-span-12 border-b border-slate-800 bg-slate-900/50 px-4 py-2">
+		<div class="flex items-center gap-4">
+			<div class="flex items-center gap-2">
+				<label for="account-filter" class="text-xs font-medium text-slate-400">Account:</label>
+				<select
+					id="account-filter"
+					bind:value={selectedAccount}
+					class="border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300 focus:border-slate-600 focus:outline-none"
+				>
+					<option value="all">All Accounts</option>
+					<!-- TODO: Load from API -->
+					<option value="1">Demo Account - XM</option>
+					<option value="2">Live Account - IC Markets</option>
+				</select>
+			</div>
+
+			<div class="flex items-center gap-2">
+				<label for="start-date" class="text-xs font-medium text-slate-400">From:</label>
+				<input
+					id="start-date"
+					type="date"
+					bind:value={startDate}
+					class="border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300 focus:border-slate-600 focus:outline-none"
+				/>
+			</div>
+
+			<div class="flex items-center gap-2">
+				<label for="end-date" class="text-xs font-medium text-slate-400">To:</label>
+				<input
+					id="end-date"
+					type="date"
+					bind:value={endDate}
+					class="border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300 focus:border-slate-600 focus:outline-none"
+				/>
+			</div>
+
+			{#if selectedAccount !== 'all' || startDate || endDate}
+				<button
+					onclick={clearFilters}
+					class="text-xs text-slate-500 hover:text-slate-300"
+				>
+					Clear Filters
+				</button>
+			{/if}
+		</div>
 	</div>
 
 	<!-- Metrics -->
@@ -235,3 +318,5 @@
 </div>
 
 <AddTradeModal isOpen={isModalOpen} onClose={closeModal} />
+<DepositModal isOpen={isDepositModalOpen} onClose={closeDepositModal} />
+<WithdrawModal isOpen={isWithdrawModalOpen} onClose={closeWithdrawModal} />
