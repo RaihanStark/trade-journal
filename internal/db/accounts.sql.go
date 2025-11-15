@@ -250,16 +250,16 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (U
 
 const updateAccountBalance = `-- name: UpdateAccountBalance :one
 UPDATE accounts
-SET current_balance = current_balance + $3,
+SET current_balance = COALESCE(current_balance, 0) + $3::decimal,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
 RETURNING id, user_id, name, broker, account_number, account_type, currency, current_balance, is_active, created_at, updated_at
 `
 
 type UpdateAccountBalanceParams struct {
-	ID             int32          `json:"id"`
-	UserID         int32          `json:"user_id"`
-	CurrentBalance sql.NullString `json:"current_balance"`
+	ID     int32  `json:"id"`
+	UserID int32  `json:"user_id"`
+	Amount string `json:"amount"`
 }
 
 type UpdateAccountBalanceRow struct {
@@ -277,7 +277,7 @@ type UpdateAccountBalanceRow struct {
 }
 
 func (q *Queries) UpdateAccountBalance(ctx context.Context, arg UpdateAccountBalanceParams) (UpdateAccountBalanceRow, error) {
-	row := q.db.QueryRowContext(ctx, updateAccountBalance, arg.ID, arg.UserID, arg.CurrentBalance)
+	row := q.db.QueryRowContext(ctx, updateAccountBalance, arg.ID, arg.UserID, arg.Amount)
 	var i UpdateAccountBalanceRow
 	err := row.Scan(
 		&i.ID,

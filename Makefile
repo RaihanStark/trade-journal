@@ -1,10 +1,15 @@
-.PHONY: help run build migrate-up migrate-down migrate-create sqlc-generate dev docker-up docker-down docker-logs
+.PHONY: help run build migrate-up migrate-down migrate-create sqlc-generate dev docker-up docker-down docker-logs test test-verbose test-coverage test-race clean
 
 help:
 	@echo "Available commands:"
 	@echo "  make run            - Run the API server"
 	@echo "  make build          - Build the API server"
 	@echo "  make dev            - Run in development mode with hot reload"
+	@echo "  make test           - Run all tests"
+	@echo "  make test-verbose   - Run all tests with verbose output"
+	@echo "  make test-coverage  - Run tests with coverage report"
+	@echo "  make test-race      - Run tests with race detector"
+	@echo "  make clean          - Clean build artifacts and test cache"
 	@echo "  make docker-up      - Start PostgreSQL in Docker"
 	@echo "  make docker-down    - Stop PostgreSQL in Docker"
 	@echo "  make docker-logs    - View PostgreSQL logs"
@@ -43,3 +48,31 @@ docker-down:
 
 docker-logs:
 	docker compose -f docker-compose-dev.yml logs -f postgres
+
+test:
+	@echo "Running tests..."
+	go test ./...
+
+test-verbose:
+	@echo "Running tests (verbose)..."
+	go test -v ./...
+
+test-coverage:
+	@echo "Running tests with coverage..."
+	go test -cover ./...
+	@echo ""
+	@echo "Generating coverage report..."
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+test-race:
+	@echo "Running tests with race detector..."
+	go test -race ./...
+
+clean:
+	@echo "Cleaning build artifacts..."
+	rm -rf bin/
+	rm -f coverage.out coverage.html
+	go clean -testcache
+	@echo "Clean complete"

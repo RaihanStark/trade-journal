@@ -28,7 +28,7 @@ RETURNING id, user_id, name, broker, account_number, account_type, currency, cur
 
 -- name: UpdateAccountBalance :one
 UPDATE accounts
-SET current_balance = current_balance + $3,
+SET current_balance = COALESCE(current_balance, 0) + sqlc.arg(amount)::decimal,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
 RETURNING id, user_id, name, broker, account_number, account_type, currency, current_balance, is_active, created_at, updated_at;

@@ -64,16 +64,26 @@ func (s *Service) CreateTrade(ctx context.Context, userID int64, req CreateTrade
 		return nil, err
 	}
 
-	// Update account balance for DEPOSIT and WITHDRAW trades
-	if (t.Type == trade.TradeTypeDeposit || t.Type == trade.TradeTypeWithdraw) && t.AccountID != nil && t.Amount != nil {
-		amount := *t.Amount
-		if t.Type == trade.TradeTypeWithdraw {
-			amount = -amount // Withdraw reduces balance
-		}
-		_, err = s.accountRepo.UpdateBalance(ctx, *t.AccountID, userID, amount)
-		if err != nil {
-			// Log error but don't fail the trade creation
-			// You might want to handle this differently in production
+	// Update account balance
+	if t.AccountID != nil {
+		if t.Type == trade.TradeTypeDeposit || t.Type == trade.TradeTypeWithdraw {
+			// Handle DEPOSIT and WITHDRAW trades
+			if t.Amount != nil {
+				amount := *t.Amount
+				if t.Type == trade.TradeTypeWithdraw {
+					amount = -amount // Withdraw reduces balance
+				}
+				_, err = s.accountRepo.UpdateBalance(ctx, *t.AccountID, userID, amount)
+				if err != nil {
+					// Log error but don't fail the trade creation
+				}
+			}
+		} else if (t.Type == trade.TradeTypeBuy || t.Type == trade.TradeTypeSell) && t.PL != nil {
+			// Handle closed BUY/SELL trades - update balance with P/L
+			_, err = s.accountRepo.UpdateBalance(ctx, *t.AccountID, userID, *t.PL)
+			if err != nil {
+				// Log error but don't fail the trade creation
+			}
 		}
 	}
 
@@ -104,6 +114,12 @@ func (s *Service) GetTrade(ctx context.Context, id int64, userID int64) (*TradeD
 }
 
 func (s *Service) UpdateTrade(ctx context.Context, id int64, userID int64, req UpdateTradeRequest) (*TradeDTO, error) {
+	// Get the existing trade first to compare P/L changes
+	existingTrade, err := s.repo.GetByID(ctx, id, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	// Parse date and time
 	date, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
@@ -148,28 +164,80 @@ func (s *Service) UpdateTrade(ctx context.Context, id int64, userID int64, req U
 		return nil, err
 	}
 
+	// Update account balance if P/L changed for BUY/SELL trades
+	if (t.Type == trade.TradeTypeBuy || t.Type == trade.TradeTypeSell) {
+		// Check if account changed
+		accountChanged := false
+		if (existingTrade.AccountID == nil && t.AccountID != nil) ||
+			(existingTrade.AccountID != nil && t.AccountID == nil) ||
+			(existingTrade.AccountID != nil && t.AccountID != nil && *existingTrade.AccountID != *t.AccountID) {
+			accountChanged = true
+		}
+
+		if accountChanged {
+			// Revert P/L from old account
+			if existingTrade.AccountID != nil && existingTrade.PL != nil {
+				_, err = s.accountRepo.UpdateBalance(ctx, *existingTrade.AccountID, userID, -*existingTrade.PL)
+			}
+			// Add P/L to new account
+			if t.AccountID != nil && t.PL != nil {
+				_, err = s.accountRepo.UpdateBalance(ctx, *t.AccountID, userID, *t.PL)
+			}
+		} else if t.AccountID != nil {
+			// Same account, calculate P/L difference
+			oldPL := float64(0)
+			if existingTrade.PL != nil {
+				oldPL = *existingTrade.PL
+			}
+			newPL := float64(0)
+			if t.PL != nil {
+				newPL = *t.PL
+			}
+
+			plDifference := newPL - oldPL
+
+			// Only update balance if there's a difference
+			if plDifference != 0 {
+				_, err = s.accountRepo.UpdateBalance(ctx, *t.AccountID, userID, plDifference)
+				if err != nil {
+					// Log error but don't fail the update
+				}
+			}
+		}
+	}
+
 	return s.toDTO(updated), nil
 }
 
 func (s *Service) DeleteTrade(ctx context.Context, id int64, userID int64) error {
-	// Get the trade first to check if it's a deposit/withdrawal
+	// Get the trade first to revert balance changes
 	t, err := s.repo.GetByID(ctx, id, userID)
 	if err != nil {
 		return err
 	}
 
-	// Revert account balance for DEPOSIT and WITHDRAW trades before deleting
-	if (t.Type == trade.TradeTypeDeposit || t.Type == trade.TradeTypeWithdraw) && t.AccountID != nil && t.Amount != nil {
-		amount := *t.Amount
-		// Reverse the transaction
-		if t.Type == trade.TradeTypeDeposit {
-			amount = -amount // Revert deposit by subtracting
-		}
-		// For withdraw, amount stays positive to add it back
-		_, err = s.accountRepo.UpdateBalance(ctx, *t.AccountID, userID, amount)
-		if err != nil {
-			// Log error but continue with deletion
-			// You might want to handle this differently in production
+	// Revert account balance before deleting
+	if t.AccountID != nil {
+		if t.Type == trade.TradeTypeDeposit || t.Type == trade.TradeTypeWithdraw {
+			// Revert DEPOSIT and WITHDRAW trades
+			if t.Amount != nil {
+				amount := *t.Amount
+				// Reverse the transaction
+				if t.Type == trade.TradeTypeDeposit {
+					amount = -amount // Revert deposit by subtracting
+				}
+				// For withdraw, amount stays positive to add it back
+				_, err = s.accountRepo.UpdateBalance(ctx, *t.AccountID, userID, amount)
+				if err != nil {
+					// Log error but continue with deletion
+				}
+			}
+		} else if (t.Type == trade.TradeTypeBuy || t.Type == trade.TradeTypeSell) && t.PL != nil {
+			// Revert P/L for closed BUY/SELL trades
+			_, err = s.accountRepo.UpdateBalance(ctx, *t.AccountID, userID, -*t.PL)
+			if err != nil {
+				// Log error but continue with deletion
+			}
 		}
 	}
 

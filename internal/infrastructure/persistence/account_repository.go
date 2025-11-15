@@ -135,9 +135,9 @@ func (r *AccountRepository) Update(ctx context.Context, acc *account.Account) (*
 // UpdateBalance updates an account's balance by the given amount
 func (r *AccountRepository) UpdateBalance(ctx context.Context, id int64, userID int64, amount float64) (*account.Account, error) {
 	result, err := r.queries.UpdateAccountBalance(ctx, db.UpdateAccountBalanceParams{
-		ID:             int32(id),
-		UserID:         int32(userID),
-		CurrentBalance: floatToNullString(amount),
+		ID:     int32(id),
+		UserID: int32(userID),
+		Amount: formatFloat(amount),
 	})
 	if err != nil {
 		return nil, err
