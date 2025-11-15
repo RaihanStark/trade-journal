@@ -1,0 +1,13 @@
+.env
+*.log
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+.docker/
