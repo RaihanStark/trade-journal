@@ -6,7 +6,96 @@ package db
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"fmt"
+	"time"
 )
+
+type TradeStatus string
+
+const (
+	TradeStatusOpen   TradeStatus = "open"
+	TradeStatusClosed TradeStatus = "closed"
+)
+
+func (e *TradeStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TradeStatus(s)
+	case string:
+		*e = TradeStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TradeStatus: %T", src)
+	}
+	return nil
+}
+
+type NullTradeStatus struct {
+	TradeStatus TradeStatus `json:"trade_status"`
+	Valid       bool        `json:"valid"` // Valid is true if TradeStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTradeStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.TradeStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TradeStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTradeStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TradeStatus), nil
+}
+
+type TradeType string
+
+const (
+	TradeTypeBUY      TradeType = "BUY"
+	TradeTypeSELL     TradeType = "SELL"
+	TradeTypeDEPOSIT  TradeType = "DEPOSIT"
+	TradeTypeWITHDRAW TradeType = "WITHDRAW"
+)
+
+func (e *TradeType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TradeType(s)
+	case string:
+		*e = TradeType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TradeType: %T", src)
+	}
+	return nil
+}
+
+type NullTradeType struct {
+	TradeType TradeType `json:"trade_type"`
+	Valid     bool      `json:"valid"` // Valid is true if TradeType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTradeType) Scan(value interface{}) error {
+	if value == nil {
+		ns.TradeType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TradeType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTradeType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TradeType), nil
+}
 
 type Account struct {
 	ID            int32        `json:"id"`
@@ -28,6 +117,35 @@ type Strategy struct {
 	Description sql.NullString `json:"description"`
 	CreatedAt   sql.NullTime   `json:"created_at"`
 	UpdatedAt   sql.NullTime   `json:"updated_at"`
+}
+
+type Trade struct {
+	ID         int32          `json:"id"`
+	UserID     int32          `json:"user_id"`
+	AccountID  sql.NullInt32  `json:"account_id"`
+	Date       time.Time      `json:"date"`
+	Time       time.Time      `json:"time"`
+	Pair       sql.NullString `json:"pair"`
+	Type       TradeType      `json:"type"`
+	Entry      sql.NullString `json:"entry"`
+	Exit       sql.NullString `json:"exit"`
+	Lots       sql.NullString `json:"lots"`
+	Pips       sql.NullString `json:"pips"`
+	Pl         sql.NullString `json:"pl"`
+	Rr         sql.NullString `json:"rr"`
+	Status     TradeStatus    `json:"status"`
+	StopLoss   sql.NullString `json:"stop_loss"`
+	TakeProfit sql.NullString `json:"take_profit"`
+	Notes      sql.NullString `json:"notes"`
+	Mistakes   sql.NullString `json:"mistakes"`
+	Amount     sql.NullString `json:"amount"`
+	CreatedAt  sql.NullTime   `json:"created_at"`
+	UpdatedAt  sql.NullTime   `json:"updated_at"`
+}
+
+type TradeStrategy struct {
+	TradeID    int32 `json:"trade_id"`
+	StrategyID int32 `json:"strategy_id"`
 }
 
 type User struct {

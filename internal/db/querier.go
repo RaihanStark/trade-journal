@@ -9,19 +9,27 @@ import (
 )
 
 type Querier interface {
+	AddTradeStrategy(ctx context.Context, arg AddTradeStrategyParams) error
 	CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error)
 	CreateStrategy(ctx context.Context, arg CreateStrategyParams) (Strategy, error)
+	CreateTrade(ctx context.Context, arg CreateTradeParams) (Trade, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteAccount(ctx context.Context, arg DeleteAccountParams) error
 	DeleteStrategy(ctx context.Context, arg DeleteStrategyParams) error
+	DeleteTrade(ctx context.Context, arg DeleteTradeParams) error
+	DeleteTradeStrategies(ctx context.Context, tradeID int32) error
 	GetAccountByID(ctx context.Context, arg GetAccountByIDParams) (Account, error)
 	GetAccountsByUserID(ctx context.Context, userID int32) ([]Account, error)
 	GetStrategiesByUserID(ctx context.Context, userID int32) ([]Strategy, error)
 	GetStrategyByID(ctx context.Context, arg GetStrategyByIDParams) (Strategy, error)
+	GetTradeByID(ctx context.Context, arg GetTradeByIDParams) (Trade, error)
+	GetTradeStrategies(ctx context.Context, tradeID int32) ([]Strategy, error)
+	GetTradesByUserID(ctx context.Context, userID int32) ([]Trade, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (GetUserByIDRow, error)
 	UpdateAccount(ctx context.Context, arg UpdateAccountParams) (Account, error)
 	UpdateStrategy(ctx context.Context, arg UpdateStrategyParams) (Strategy, error)
+	UpdateTrade(ctx context.Context, arg UpdateTradeParams) (Trade, error)
 }
 
 var _ Querier = (*Queries)(nil)

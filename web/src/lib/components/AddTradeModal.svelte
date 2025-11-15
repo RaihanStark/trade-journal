@@ -1,13 +1,17 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import Modal from './Modal.svelte';
 	import TagInput from './TagInput.svelte';
+	import { apiClient, type Account, type Strategy } from '$lib/api/client';
+	import { authStore } from '$lib/stores/auth.svelte';
 
 	interface Props {
 		isOpen: boolean;
 		onClose: () => void;
+		onSuccess?: () => void;
 	}
 
-	let { isOpen, onClose }: Props = $props();
+	let { isOpen, onClose, onSuccess }: Props = $props();
 
 	let accountId = $state('');
 	let date = $state(new Date().toISOString().split('T')[0]);
@@ -19,27 +23,88 @@
 	let lots = $state('');
 	let stopLoss = $state('');
 	let takeProfit = $state('');
-	let strategies = $state<string[]>([]);
+	let selectedStrategyNames = $state<string[]>([]);
 	let notes = $state('');
+	let isSubmitting = $state(false);
 
-	function handleSubmit() {
-		console.log('Trade submitted:', {
-			accountId,
+	let accounts = $state<Account[]>([]);
+	let strategies = $state<Strategy[]>([]);
+
+	onMount(async () => {
+		await loadData();
+	});
+
+	async function loadData() {
+		if (!authStore.token) return;
+
+		// Load accounts
+		const { data: accountsData, error: accountsError } = await apiClient.getAccounts(authStore.token);
+		if (accountsData) {
+			accounts = accountsData;
+		}
+
+		// Load strategies
+		const { data: strategiesData, error: strategiesError } = await apiClient.getStrategies(authStore.token);
+		if (strategiesData) {
+			strategies = strategiesData;
+		}
+	}
+
+	async function handleSubmit() {
+		if (!authStore.token || isSubmitting) return;
+
+		isSubmitting = true;
+
+		// Find strategy IDs from selected names
+		const strategyIds: number[] = [];
+		for (const name of selectedStrategyNames) {
+			let strategy = strategies.find(s => s.name === name);
+			if (!strategy) {
+				// Create new strategy if it doesn't exist
+				const { data, error } = await apiClient.createStrategy({ name, description: '' }, authStore.token);
+				if (data) {
+					strategy = data;
+					strategies = [...strategies, data];
+				}
+			}
+			if (strategy) {
+				strategyIds.push(strategy.id);
+			}
+		}
+
+		const { data, error } = await apiClient.createTrade({
+			account_id: accountId ? parseInt(accountId) : null,
 			date,
 			time,
 			pair,
 			type,
-			entry,
-			exit,
-			lots,
-			stopLoss,
-			takeProfit,
-			strategies,
-			notes
-		});
-		// TODO: Add trade to database/state
+			entry: parseFloat(entry),
+			exit: exit ? parseFloat(exit) : null,
+			lots: parseFloat(lots),
+			pips: null,
+			pl: null,
+			rr: null,
+			status: exit ? 'closed' : 'open',
+			stop_loss: stopLoss ? parseFloat(stopLoss) : null,
+			take_profit: takeProfit ? parseFloat(takeProfit) : null,
+			notes,
+			mistakes: '',
+			amount: null,
+			strategy_ids: strategyIds
+		}, authStore.token);
+
+		isSubmitting = false;
+
+		if (error) {
+			console.error('Failed to create trade:', error);
+			return;
+		}
+
 		resetForm();
 		onClose();
+		if (onSuccess) {
+			onSuccess();
+		}
 	}
 
 	function resetForm() {
@@ -53,7 +118,7 @@
 		lots = '';
 		stopLoss = '';
 		takeProfit = '';
-		strategies = [];
+		selectedStrategyNames = [];
 		notes = '';
 	}
 
@@ -74,23 +139,8 @@
 		'GBP/CHF'
 	];
 
-	const suggestedStrategies = [
-		'Trend Following',
-		'Support/Resistance',
-		'Breakout',
-		'Reversal',
-		'Range Trading',
-		'News Trading',
-		'Scalping',
-		'Swing Trading',
-		'Price Action',
-		'ICT Concepts',
-		'Smart Money Concepts',
-		'Supply & Demand',
-		'Fibonacci',
-		'Moving Average',
-		'Candlestick Patterns'
-	];
+	// Get strategy names for suggestions
+	let strategyNames = $derived(strategies.map(s => s.name));
 </script>
 
 <Modal {isOpen} title="Add New Trade" size="lg" {onClose}>
@@ -108,9 +158,9 @@
 					class="mt-1 w-full border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none"
 				>
 					<option value="">Select account</option>
-					<!-- TODO: Load accounts from API -->
-					<option value="1">Demo Account - XM</option>
-					<option value="2">Live Account - IC Markets</option>
+					{#each accounts as account}
+						<option value={account.id}>{account.name} - {account.broker}</option>
+					{/each}
 				</select>
 			</div>
 
@@ -224,11 +274,11 @@
 			<!-- Strategy Tags -->
 			<div>
 				<TagInput
-					value={strategies}
-					suggestions={suggestedStrategies}
+					value={selectedStrategyNames}
+					suggestions={strategyNames}
 					label="Strategies"
 					placeholder="Type to add or create strategies..."
-					onUpdate={(tags) => { strategies = tags; }}
+					onUpdate={(tags) => { selectedStrategyNames = tags; }}
 				/>
 			</div>
 
@@ -291,9 +341,10 @@
 			<button
 				onclick={handleSubmit}
 				type="submit"
-				class="bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+				disabled={isSubmitting}
+				class="bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
 			>
-				Add Trade
+				{isSubmitting ? 'Adding...' : 'Add Trade'}
 			</button>
 		</div>
 	{/snippet}

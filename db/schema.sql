@@ -10,6 +10,28 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: trade_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.trade_status AS ENUM (
+    'open',
+    'closed'
+);
+
+
+--
+-- Name: trade_type; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.trade_type AS ENUM (
+    'BUY',
+    'SELL',
+    'DEPOSIT',
+    'WITHDRAW'
+);
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -97,6 +119,65 @@ ALTER SEQUENCE public.strategies_id_seq OWNED BY public.strategies.id;
 
 
 --
+-- Name: trade_strategies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.trade_strategies (
+    trade_id integer NOT NULL,
+    strategy_id integer NOT NULL
+);
+
+
+--
+-- Name: trades; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.trades (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    account_id integer,
+    date date NOT NULL,
+    "time" time without time zone NOT NULL,
+    pair character varying(20),
+    type public.trade_type NOT NULL,
+    entry numeric(20,8),
+    exit numeric(20,8),
+    lots numeric(10,2),
+    pips numeric(10,2),
+    pl numeric(20,2),
+    rr numeric(10,2),
+    status public.trade_status DEFAULT 'open'::public.trade_status NOT NULL,
+    stop_loss numeric(20,8),
+    take_profit numeric(20,8),
+    notes text,
+    mistakes text,
+    amount numeric(20,2),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+--
+-- Name: trades_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.trades_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: trades_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.trades_id_seq OWNED BY public.trades.id;
+
+
+--
 -- Name: users; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -144,6 +225,13 @@ ALTER TABLE ONLY public.strategies ALTER COLUMN id SET DEFAULT nextval('public.s
 
 
 --
+-- Name: trades id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trades ALTER COLUMN id SET DEFAULT nextval('public.trades_id_seq'::regclass);
+
+
+--
 -- Name: users id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -172,6 +260,22 @@ ALTER TABLE ONLY public.schema_migrations
 
 ALTER TABLE ONLY public.strategies
     ADD CONSTRAINT strategies_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: trade_strategies trade_strategies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trade_strategies
+    ADD CONSTRAINT trade_strategies_pkey PRIMARY KEY (trade_id, strategy_id);
+
+
+--
+-- Name: trades trades_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trades
+    ADD CONSTRAINT trades_pkey PRIMARY KEY (id);
 
 
 --
@@ -235,6 +339,38 @@ ALTER TABLE ONLY public.strategies
 
 
 --
+-- Name: trade_strategies trade_strategies_strategy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trade_strategies
+    ADD CONSTRAINT trade_strategies_strategy_id_fkey FOREIGN KEY (strategy_id) REFERENCES public.strategies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: trade_strategies trade_strategies_trade_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trade_strategies
+    ADD CONSTRAINT trade_strategies_trade_id_fkey FOREIGN KEY (trade_id) REFERENCES public.trades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: trades trades_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trades
+    ADD CONSTRAINT trades_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.accounts(id) ON DELETE SET NULL;
+
+
+--
+-- Name: trades trades_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trades
+    ADD CONSTRAINT trades_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
@@ -246,4 +382,5 @@ ALTER TABLE ONLY public.strategies
 INSERT INTO public.schema_migrations (version) VALUES
     ('20250115000001'),
     ('20250115000002'),
-    ('20250115000003');
+    ('20250115000003'),
+    ('20250115000004');

@@ -13,6 +13,7 @@ import (
 	accountapp "github.com/raihanstark/trade-journal/internal/application/account"
 	"github.com/raihanstark/trade-journal/internal/application/auth"
 	strategyapp "github.com/raihanstark/trade-journal/internal/application/strategy"
+	tradeapp "github.com/raihanstark/trade-journal/internal/application/trade"
 	"github.com/raihanstark/trade-journal/internal/db"
 	"github.com/raihanstark/trade-journal/internal/infrastructure/http/handlers"
 	custommiddleware "github.com/raihanstark/trade-journal/internal/infrastructure/http/middleware"
@@ -59,17 +60,20 @@ func main() {
 	userRepository := persistence.NewUserRepository(queries)
 	accountRepository := persistence.NewAccountRepository(queries)
 	strategyRepository := persistence.NewStrategyRepository(queries)
+	tradeRepository := persistence.NewTradeRepository(queries)
 	tokenGenerator := security.NewJWTTokenGenerator(jwtSecret)
 
 	// Initialize application layer
 	authService := auth.NewService(userRepository, tokenGenerator)
 	accountService := accountapp.NewService(accountRepository)
 	strategyService := strategyapp.NewService(strategyRepository)
+	tradeService := tradeapp.NewService(tradeRepository)
 
 	// Initialize presentation layer
 	authHandler := handlers.NewAuthHandler(authService)
 	accountHandler := handlers.NewAccountHandler(accountService)
 	strategyHandler := handlers.NewStrategyHandler(strategyService)
+	tradeHandler := handlers.NewTradeHandler(tradeService)
 
 	// Create Echo instance
 	e := echo.New()
@@ -115,6 +119,13 @@ func main() {
 	protected.GET("/strategies/:id", strategyHandler.GetStrategy)
 	protected.PUT("/strategies/:id", strategyHandler.UpdateStrategy)
 	protected.DELETE("/strategies/:id", strategyHandler.DeleteStrategy)
+
+	// Trade routes
+	protected.POST("/trades", tradeHandler.CreateTrade)
+	protected.GET("/trades", tradeHandler.GetTrades)
+	protected.GET("/trades/:id", tradeHandler.GetTrade)
+	protected.PUT("/trades/:id", tradeHandler.UpdateTrade)
+	protected.DELETE("/trades/:id", tradeHandler.DeleteTrade)
 
 	// Start server
 	log.Printf("Server starting on port %s", port)

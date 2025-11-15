@@ -1,19 +1,45 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import MetricCard from '$lib/components/MetricCard.svelte';
 	import TradesTable from '$lib/components/TradesTable.svelte';
 	import StatsGrid from '$lib/components/StatsGrid.svelte';
 	import AddTradeModal from '$lib/components/AddTradeModal.svelte';
 	import DepositModal from '$lib/components/DepositModal.svelte';
 	import WithdrawModal from '$lib/components/WithdrawModal.svelte';
+	import { apiClient, type Trade } from '$lib/api/client';
+	import { authStore } from '$lib/stores/auth.svelte';
 
 	let isModalOpen = $state(false);
 	let isDepositModalOpen = $state(false);
 	let isWithdrawModalOpen = $state(false);
+	let isLoading = $state(true);
+	let trades = $state<Trade[]>([]);
 
 	// Filters
 	let selectedAccount = $state('all');
 	let startDate = $state('');
 	let endDate = $state('');
+
+	onMount(async () => {
+		await loadTrades();
+	});
+
+	async function loadTrades() {
+		if (!authStore.token) return;
+
+		isLoading = true;
+		const { data, error } = await apiClient.getTrades(authStore.token);
+		isLoading = false;
+
+		if (error) {
+			console.error('Failed to load trades:', error);
+			return;
+		}
+
+		if (data) {
+			trades = data;
+		}
+	}
 
 	function openModal() {
 		isModalOpen = true;
@@ -45,6 +71,19 @@
 		endDate = '';
 	}
 
+	async function handleDeleteTrade(id: number) {
+		if (!authStore.token) return;
+
+		const { error } = await apiClient.deleteTrade(id, authStore.token);
+		if (error) {
+			console.error('Failed to delete trade:', error);
+			return;
+		}
+
+		// Reload trades after delete
+		await loadTrades();
+	}
+
 	const metrics = {
 		totalPL: 15420.5,
 		winRate: 64.5,
@@ -56,7 +95,8 @@
 		maxDrawdown: -2340.2
 	};
 
-	const recentTrades: Array<{
+	// Keep mock data structure for reference but commented out
+	/*const recentTrades: Array<{
 		id: number;
 		date: string;
 		time: string;
@@ -263,7 +303,7 @@
 			rr: -1.5,
 			status: 'closed' as const
 		}
-	];
+	];*/
 </script>
 
 <div class="grid h-full grid-cols-12 grid-rows-[auto_auto_auto_1fr] bg-slate-950">
@@ -346,7 +386,13 @@
 
 	<!-- Main Content -->
 	<div class="col-span-10 row-span-1 border-r border-slate-800">
-		<TradesTable trades={recentTrades} />
+		{#if isLoading}
+			<div class="flex h-64 items-center justify-center">
+				<p class="text-slate-500">Loading trades...</p>
+			</div>
+		{:else}
+			<TradesTable {trades} onDelete={handleDeleteTrade} onUpdate={loadTrades} />
+		{/if}
 	</div>
 
 	<div class="col-span-2 row-span-1">
@@ -354,6 +400,6 @@
 	</div>
 </div>
 
-<AddTradeModal isOpen={isModalOpen} onClose={closeModal} />
+<AddTradeModal isOpen={isModalOpen} onClose={closeModal} onSuccess={loadTrades} />
 <DepositModal isOpen={isDepositModalOpen} onClose={closeDepositModal} />
 <WithdrawModal isOpen={isWithdrawModalOpen} onClose={closeWithdrawModal} />

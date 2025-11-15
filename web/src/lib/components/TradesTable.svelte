@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import TagInput from './TagInput.svelte';
+	import { apiClient, type Strategy } from '$lib/api/client';
+	import { authStore } from '$lib/stores/auth.svelte';
 
 	interface Trade {
 		id: number;
+		account_id: number | null;
 		date: string;
 		time: string;
 		pair: string;
@@ -15,13 +18,13 @@
 		pl: number | null;
 		rr: number | null;
 		status: 'open' | 'closed';
-		stopLoss?: number;
-		takeProfit?: number;
+		stop_loss?: number | null;
+		take_profit?: number | null;
 		notes?: string;
 		strategy?: string;
-		strategies?: string[];
+		strategies?: Array<{ id: number; name: string }>;
 		mistakes?: string;
-		amount?: number;
+		amount?: number | null;
 	}
 
 	function isTransaction(trade: Trade): boolean {
@@ -30,14 +33,32 @@
 
 	interface Props {
 		trades: Trade[];
+		onDelete?: (id: number) => void;
+		onUpdate?: () => void;
 	}
 
-	let { trades }: Props = $props();
+	let { trades, onDelete, onUpdate }: Props = $props();
 
 	let expandedRows = $state<Set<number>>(new Set());
 	let editingField = $state<{ tradeId: number; field: string } | null>(null);
 	let editValue = $state<string>('');
-	let editStrategies = $state<string[]>([]);
+	let editStrategyNames = $state<string[]>([]);
+	let allStrategies = $state<Strategy[]>([]);
+
+	// Load all strategies on mount for editing
+	$effect(() => {
+		if (authStore.token) {
+			loadStrategies();
+		}
+	});
+
+	async function loadStrategies() {
+		if (!authStore.token) return;
+		const { data } = await apiClient.getStrategies(authStore.token);
+		if (data) {
+			allStrategies = data;
+		}
+	}
 
 	function toggleRow(tradeId: number) {
 		if (expandedRows.has(tradeId)) {
@@ -51,27 +72,95 @@
 	function startEdit(tradeId: number, field: string, currentValue: any) {
 		editingField = { tradeId, field };
 		if (field === 'strategies') {
-			editStrategies = currentValue || [];
+			// Convert strategy objects to just names for editing
+			editStrategyNames = currentValue ? currentValue.map((s: { id: number; name: string }) => s.name) : [];
 		} else {
 			editValue = currentValue?.toString() || '';
 		}
 	}
 
-	function saveEdit() {
-		// TODO: Implement save logic
-		if (editingField?.field === 'strategies') {
-			console.log('Saving:', editingField, 'Value:', editStrategies);
-		} else {
-			console.log('Saving:', editingField, 'Value:', editValue);
+	async function saveEdit() {
+		if (!editingField || !authStore.token) return;
+
+		const trade = trades.find(t => t.id === editingField.tradeId);
+		if (!trade) return;
+
+		try {
+			let updateData: any = {
+				account_id: trade.account_id,
+				date: trade.date,
+				time: trade.time,
+				pair: trade.pair,
+				type: trade.type,
+				entry: trade.entry,
+				exit: trade.exit,
+				lots: trade.lots,
+				pips: trade.pips,
+				pl: trade.pl,
+				rr: trade.rr,
+				status: trade.status,
+				stop_loss: trade.stop_loss,
+				take_profit: trade.take_profit,
+				notes: trade.notes || '',
+				mistakes: trade.mistakes || '',
+				amount: trade.amount,
+				strategy_ids: trade.strategies?.map(s => s.id) || []
+			};
+
+			// Update the specific field
+			if (editingField.field === 'strategies') {
+				// Find or create strategies
+				const strategyIds: number[] = [];
+				for (const name of editStrategyNames) {
+					let strategy = allStrategies.find(s => s.name === name);
+					if (!strategy) {
+						const { data } = await apiClient.createStrategy({ name, description: '' }, authStore.token);
+						if (data) {
+							strategy = data;
+							allStrategies = [...allStrategies, data];
+						}
+					}
+					if (strategy) {
+						strategyIds.push(strategy.id);
+					}
+				}
+				updateData.strategy_ids = strategyIds;
+			} else if (editingField.field === 'entry') {
+				updateData.entry = parseFloat(editValue);
+			} else if (editingField.field === 'exit') {
+				updateData.exit = editValue ? parseFloat(editValue) : null;
+			} else if (editingField.field === 'stopLoss') {
+				updateData.stop_loss = editValue ? parseFloat(editValue) : null;
+			} else if (editingField.field === 'takeProfit') {
+				updateData.take_profit = editValue ? parseFloat(editValue) : null;
+			} else if (editingField.field === 'notes') {
+				updateData.notes = editValue;
+			} else if (editingField.field === 'mistakes') {
+				updateData.mistakes = editValue;
+			}
+
+			const { error } = await apiClient.updateTrade(editingField.tradeId, updateData, authStore.token);
+
+			if (error) {
+				console.error('Failed to update trade:', error);
+				return;
+			}
+
+			// Reload trades after successful update
+			if (onUpdate) {
+				onUpdate();
+			}
+		} finally {
+			editingField = null;
+			editStrategyNames = [];
+			editValue = '';
 		}
-		editingField = null;
-		editStrategies = [];
 	}
 
 	function cancelEdit() {
 		editingField = null;
 		editValue = '';
-		editStrategies = [];
+		editStrategyNames = [];
 	}
 
 	function getPLColor(pl: number): string {
@@ -90,23 +179,8 @@
 		return 'loss';
 	}
 
-	const suggestedStrategies = [
-		'Trend Following',
-		'Support/Resistance',
-		'Breakout',
-		'Reversal',
-		'Range Trading',
-		'News Trading',
-		'Scalping',
-		'Swing Trading',
-		'Price Action',
-		'ICT Concepts',
-		'Smart Money Concepts',
-		'Supply & Demand',
-		'Fibonacci',
-		'Moving Average',
-		'Candlestick Patterns'
-	];
+	// Get strategy names for suggestions
+	let strategyNames = $derived(allStrategies.map(s => s.name));
 </script>
 
 <div class="flex h-full flex-col bg-slate-900">
@@ -177,8 +251,9 @@
 							<td class="px-3 py-2">
 								<button
 									onclick={() => {
-										console.log('Delete transaction:', trade.id);
-										// TODO: Implement delete transaction
+										if (onDelete) {
+											onDelete(trade.id);
+										}
 									}}
 									class="text-slate-600 transition-colors hover:text-red-400"
 									aria-label="Delete transaction"
@@ -230,17 +305,17 @@
 								</span>
 							</td>
 							<td class="px-3 py-2 text-right font-mono text-sm text-slate-300">
-								{trade.entry.toFixed(trade.pair.includes('JPY') ? 2 : 4)}
+								{trade.entry.toFixed(4)}
 							</td>
 							<td class="px-3 py-2 text-right font-mono text-sm text-slate-300">
 								{#if trade.exit !== null}
-									{trade.exit.toFixed(trade.pair.includes('JPY') ? 2 : 4)}
+									{trade.exit.toFixed(4)}
 								{:else}
 									<span class="text-slate-600">-</span>
 								{/if}
 							</td>
 							<td class="px-3 py-2 text-right font-mono text-sm text-slate-300">
-								{trade.lots.toFixed(2)}
+								{trade.lots}
 							</td>
 							<td class="px-3 py-2 text-right">
 								{#if trade.pips !== null}
@@ -294,8 +369,9 @@
 								<button
 									onclick={(e) => {
 										e.stopPropagation();
-										console.log('Delete trade:', trade.id);
-										// TODO: Implement delete trade
+										if (onDelete) {
+											onDelete(trade.id);
+										}
 									}}
 									class="text-slate-600 transition-colors hover:text-red-400"
 									aria-label="Delete trade"
@@ -361,7 +437,7 @@
 												</button>
 											{:else}
 												<span class="font-mono text-sm text-slate-300">
-													{trade.entry.toFixed(trade.pair.includes('JPY') ? 2 : 4)}
+													{trade.entry.toFixed(4)}
 												</span>
 												<button
 													onclick={() => startEdit(trade.id, 'entry', trade.entry)}
@@ -424,7 +500,7 @@
 											{:else}
 												<span class="font-mono text-sm text-slate-300">
 													{#if trade.exit !== null}
-														{trade.exit.toFixed(trade.pair.includes('JPY') ? 2 : 4)}
+														{trade.exit.toFixed(4)}
 													{:else}
 														-
 													{/if}
@@ -489,10 +565,10 @@
 												</button>
 											{:else}
 												<span class="font-mono text-sm text-slate-300">
-													{trade.stopLoss?.toFixed(trade.pair.includes('JPY') ? 2 : 4) || '-'}
+													{trade.stop_loss !== null && trade.stop_loss !== undefined ? trade.stop_loss.toFixed(4) : '-'}
 												</span>
 												<button
-													onclick={() => startEdit(trade.id, 'stopLoss', trade.stopLoss)}
+													onclick={() => startEdit(trade.id, 'stopLoss', trade.stop_loss)}
 													class="text-slate-500 hover:text-slate-300"
 													aria-label="Edit stop loss"
 												>
@@ -551,10 +627,10 @@
 												</button>
 											{:else}
 												<span class="font-mono text-sm text-slate-300">
-													{trade.takeProfit?.toFixed(trade.pair.includes('JPY') ? 2 : 4) || '-'}
+													{trade.take_profit !== null && trade.take_profit !== undefined ? trade.take_profit.toFixed(4) : '-'}
 												</span>
 												<button
-													onclick={() => startEdit(trade.id, 'takeProfit', trade.takeProfit)}
+													onclick={() => startEdit(trade.id, 'takeProfit', trade.take_profit)}
 													class="text-slate-500 hover:text-slate-300"
 													aria-label="Edit take profit"
 												>
@@ -625,17 +701,17 @@
 										</div>
 										{#if editingField?.tradeId === trade.id && editingField?.field === 'strategies'}
 											<TagInput
-												value={editStrategies}
-												suggestions={suggestedStrategies}
+												value={editStrategyNames}
+												suggestions={strategyNames}
 												placeholder="Type to add or create strategies..."
-												onUpdate={(tags) => { editStrategies = tags; }}
+												onUpdate={(tags) => { editStrategyNames = tags; }}
 											/>
 										{:else}
 											{#if trade.strategies && trade.strategies.length > 0}
 												<div class="flex flex-wrap gap-1">
 													{#each trade.strategies as strategy}
 														<span class="inline-block bg-slate-700 px-2 py-0.5 text-xs text-slate-200">
-															{strategy}
+															{strategy.name}
 														</span>
 													{/each}
 												</div>

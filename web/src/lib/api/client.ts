@@ -72,6 +72,72 @@ export interface UpdateStrategyRequest {
 	description: string;
 }
 
+export interface Trade {
+	id: number;
+	account_id: number | null;
+	date: string;
+	time: string;
+	pair: string;
+	type: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAW';
+	entry: number;
+	exit: number | null;
+	lots: number;
+	pips: number | null;
+	pl: number | null;
+	rr: number | null;
+	status: 'open' | 'closed';
+	stop_loss: number | null;
+	take_profit: number | null;
+	notes: string;
+	mistakes: string;
+	amount: number | null;
+	strategies: Array<{ id: number; name: string }>;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface CreateTradeRequest {
+	account_id: number | null;
+	date: string;
+	time: string;
+	pair: string;
+	type: string;
+	entry: number;
+	exit: number | null;
+	lots: number;
+	pips: number | null;
+	pl: number | null;
+	rr: number | null;
+	status: string;
+	stop_loss: number | null;
+	take_profit: number | null;
+	notes: string;
+	mistakes: string;
+	amount: number | null;
+	strategy_ids: number[];
+}
+
+export interface UpdateTradeRequest {
+	account_id: number | null;
+	date: string;
+	time: string;
+	pair: string;
+	type: string;
+	entry: number;
+	exit: number | null;
+	lots: number;
+	pips: number | null;
+	pl: number | null;
+	rr: number | null;
+	status: string;
+	stop_loss: number | null;
+	take_profit: number | null;
+	notes: string;
+	mistakes: string;
+	amount: number | null;
+	strategy_ids: number[];
+}
+
 class ApiClient {
 	private baseUrl: string;
 
@@ -230,6 +296,61 @@ class ApiClient {
 
 	async deleteStrategy(id: number, token: string): Promise<{ data?: any; error?: string }> {
 		return this.request<any>(`/api/strategies/${id}`, {
+			method: 'DELETE',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+	}
+
+	// Trade APIs
+	async getTrades(token: string): Promise<{ data?: Trade[]; error?: string }> {
+		return this.request<Trade[]>('/api/trades', {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+	}
+
+	async getTrade(id: number, token: string): Promise<{ data?: Trade; error?: string }> {
+		return this.request<Trade>(`/api/trades/${id}`, {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+	}
+
+	async createTrade(
+		req: CreateTradeRequest,
+		token: string
+	): Promise<{ data?: Trade; error?: string }> {
+		return this.request<Trade>('/api/trades', {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify(req)
+		});
+	}
+
+	async updateTrade(
+		id: number,
+		req: UpdateTradeRequest,
+		token: string
+	): Promise<{ data?: Trade; error?: string }> {
+		return this.request<Trade>(`/api/trades/${id}`, {
+			method: 'PUT',
+			headers: {
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify(req)
+		});
+	}
+
+	async deleteTrade(id: number, token: string): Promise<{ data?: any; error?: string }> {
+		return this.request<any>(`/api/trades/${id}`, {
 			method: 'DELETE',
 			headers: {
 				Authorization: `Bearer ${token}`
