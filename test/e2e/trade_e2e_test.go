@@ -128,7 +128,51 @@ func TestE2E_Trade_ClosedTradeWithProfitAndLoss(t *testing.T) {
 		}
 	})
 
-	// Delete trade and verify balance reverts
+	// Create trade with negative P/L
+	t.Run("create trade with negative P/L should update balance with negative amount", func(t *testing.T) {
+		exit := 0.5000
+		payload := map[string]any{
+			"account_id": accountID,
+			"date":       "2025-01-15",
+			"time":       "14:30",
+			"pair":       "EUR/USD",
+			"type":       "BUY",
+			"entry":      1.0000,
+			"exit":       &exit,
+			"lots":       1.0,
+		}
+		body, _ := json.Marshal(payload)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/trades", bytes.NewReader(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		req.Header.Set(echo.HeaderAuthorization, "Bearer "+authToken)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("expected status 201, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		var response map[string]any
+		json.Unmarshal(rec.Body.Bytes(), &response)
+		pl := response["pl"].(float64)
+		if pl != -50000.0 {
+			t.Errorf("expected P/L -50000, got %.2f", pl)
+		}
+
+		// Verify balance updated to -48500 (1000 + 500 - 50000)
+		var balance float64
+		err := pg.DB.QueryRow("SELECT current_balance FROM accounts WHERE id = $1", accountID).Scan(&balance)
+		if err != nil {
+			t.Fatalf("failed to query balance: %v", err)
+		}
+		if balance != -48500.0 {
+			t.Errorf("expected balance -48500, got %.2f", balance)
+		}
+	})
+
+	// Delete first trade (the +$500 one) and verify balance reverts
 	t.Run("deleting trade reverts balance", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/trades/%d", tradeID), nil)
 		req.Header.Set(echo.HeaderAuthorization, "Bearer "+authToken)
@@ -140,14 +184,14 @@ func TestE2E_Trade_ClosedTradeWithProfitAndLoss(t *testing.T) {
 			t.Fatalf("expected status 204, got %d: %s", rec.Code, rec.Body.String())
 		}
 
-		// Verify balance reverted to $1000
+		// Verify balance reverted to -49000 (1000 - 50000, after removing the +500 trade)
 		var balance float64
 		err := pg.DB.QueryRow("SELECT current_balance FROM accounts WHERE id = $1", accountID).Scan(&balance)
 		if err != nil {
 			t.Fatalf("failed to query balance: %v", err)
 		}
-		if balance != 1000.0 {
-			t.Errorf("expected balance 1000 after delete, got %.2f", balance)
+		if balance != -49000.0 {
+			t.Errorf("expected balance -49000 after delete, got %.2f", balance)
 		}
 	})
 }

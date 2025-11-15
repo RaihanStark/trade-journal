@@ -283,6 +283,63 @@ func TestTradeService_CreateTrade_ClosedTrade_Integration(t *testing.T) {
 			t.Errorf("expected balance 1000 (unchanged) for open trade, got %.2f", balance)
 		}
 	})
+
+	t.Run("Create trade with negative P/L should update balance with negative amount", func(t *testing.T) {
+		testutil.TruncateTables(t, pg.DB)
+
+		// Create user
+		testUser := user.NewUser("negativepl@example.com", "hashedpass")
+		createdUser, _ := userRepo.Create(ctx, testUser)
+
+		// Create account with $1000
+		accountReq := accountApp.CreateAccountRequest{
+			Name:          "Test Account",
+			Broker:        "Test Broker",
+			AccountNumber: "123",
+			AccountType:   "demo",
+			Currency:      "USD",
+			IsActive:      true,
+		}
+		account, _ := accountService.CreateAccount(ctx, createdUser.ID, accountReq)
+		accountRepo.UpdateBalance(ctx, account.ID, createdUser.ID, 1000.0)
+
+		// Create closed BUY trade (50 pips loss * 1 lot = $500 loss)
+		exit := 1.0950
+		stopLoss := 1.1020
+		takeProfit := 1.0980
+		tradeReq := CreateTradeRequest{
+			AccountID:  &account.ID,
+			Date:       time.Now().Format("2006-01-02"),
+			Time:       time.Now().Format("15:04"),
+			Pair:       "EUR/USD",
+			Type:       "BUY",
+			Entry:      1.1000,
+			Exit:       &exit,
+			Lots:       1.0,
+			StopLoss:   &stopLoss,
+			TakeProfit: &takeProfit,
+		}
+		trade, _ := tradeService.CreateTrade(ctx, createdUser.ID, tradeReq)
+
+		// Verify P/L was calculated (50 pips * 1 lot * $10 = $500)
+		if trade.PL == nil {
+			t.Fatal("expected P/L to be calculated")
+		}
+		if *trade.PL != -500.0 {
+			t.Errorf("expected P/L -500, got %.2f", *trade.PL)
+		}
+
+		// Verify balance is now $500 (1000 - 500)
+		var balance float64
+		err := pg.DB.QueryRow("SELECT current_balance FROM accounts WHERE id = $1", account.ID).Scan(&balance)
+		if err != nil {
+			t.Fatalf("failed to query balance: %v", err)
+		}
+
+		if balance != 500.0 {
+			t.Errorf("expected balance 500 after negative P/L trade, got %.2f", balance)
+		}
+	})
 }
 
 func TestTradeService_UpdateTrade_Integration(t *testing.T) {

@@ -12,18 +12,18 @@ import (
 
 // TradeRepositorySpy records calls to the trade repository
 type TradeRepositorySpy struct {
-	CreateCalls []*tradedom.Trade
+	CreateCalls  []*tradedom.Trade
 	GetByIDCalls []GetByIDCall
-	UpdateCalls []*tradedom.Trade
-	DeleteCalls []DeleteCall
+	UpdateCalls  []*tradedom.Trade
+	DeleteCalls  []DeleteCall
 
-	CreateResult *tradedom.Trade
-	CreateError  error
+	CreateResult  *tradedom.Trade
+	CreateError   error
 	GetByIDResult *tradedom.Trade
-	GetByIDError error
-	UpdateResult *tradedom.Trade
-	UpdateError  error
-	DeleteError  error
+	GetByIDError  error
+	UpdateResult  *tradedom.Trade
+	UpdateError   error
+	DeleteError   error
 }
 
 type GetByIDCall struct {
@@ -283,6 +283,53 @@ func TestService_CreateTrade_ClosedTrade(t *testing.T) {
 		// Assert account balance was NOT updated
 		if len(accountSpy.UpdateBalanceCalls) != 0 {
 			t.Errorf("expected 0 calls to UpdateBalance for open trade, got %d", len(accountSpy.UpdateBalanceCalls))
+		}
+	})
+
+	t.Run("Create trade with negative P/L should update balance with negative amount", func(t *testing.T) {
+		exit := float64(0.5000)
+		pips := -5000.0
+		lotSize := 1.0
+		pl := pips * lotSize * 10.0
+		tradeSpy := &TradeRepositorySpy{
+			CreateResult: &tradedom.Trade{
+				ID:        1,
+				UserID:    userID,
+				AccountID: &accountID,
+				Type:      tradedom.TradeTypeBuy,
+				Entry:     1.0000,
+				Exit:      &exit,
+				Lots:      lotSize,
+				PL:        &pl,
+			},
+		}
+		accountSpy := &AccountRepositorySpy{}
+		service := NewService(tradeSpy, accountSpy)
+
+		_, err := service.CreateTrade(ctx, userID, CreateTradeRequest{
+			AccountID: &accountID,
+			Date:      time.Now().Format("2006-01-02"),
+			Time:      time.Now().Format("15:04"),
+			Pair:      "EUR/USD",
+			Type:      "BUY",
+			Entry:     1.0000,
+			Exit:      &exit,
+			Lots:      lotSize,
+		})
+
+		// Assert no error
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// Assert account balance was updated with negative P/L
+		if len(accountSpy.UpdateBalanceCalls) != 1 {
+			t.Fatalf("expected 1 call to UpdateBalance, got %d", len(accountSpy.UpdateBalanceCalls))
+		}
+
+		balanceCall := accountSpy.UpdateBalanceCalls[0]
+		if balanceCall.Amount != pl {
+			t.Errorf("expected amount %.2f (negative P/L), got %.2f", pl, balanceCall.Amount)
 		}
 	})
 }
