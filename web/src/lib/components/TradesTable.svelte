@@ -232,7 +232,7 @@
 							<td class="px-3 py-2 text-right">
 								{#if trade.pl !== null}
 									<span class={getPLColor(trade.pl) + ' font-mono text-base font-bold'}>
-										{trade.pl > 0 ? '+' : ''}${trade.pl.toFixed(0)}
+										{trade.pl > 0 ? '+' : ''}${trade.pl.toLocaleString('en-US')}
 									</span>
 								{:else}
 									<span class="font-mono text-base text-slate-600">-</span>
@@ -320,7 +320,7 @@
 							<td class="px-3 py-2 text-right">
 								{#if trade.pips !== null}
 									<span class={getPLColor(trade.pips) + ' font-mono text-sm font-bold'}>
-										{trade.pips > 0 ? '+' : ''}{trade.pips}
+										{trade.pips > 0 ? '+' : ''}{trade.pips.toLocaleString('en-US')}
 									</span>
 								{:else}
 									<span class="font-mono text-sm text-slate-600">-</span>
@@ -329,7 +329,7 @@
 							<td class="px-3 py-2 text-right">
 								{#if trade.pl !== null}
 									<span class={getPLColor(trade.pl) + ' font-mono text-base font-bold'}>
-										{trade.pl > 0 ? '+' : ''}${trade.pl.toFixed(0)}
+										{trade.pl > 0 ? '+' : ''}${trade.pl.toLocaleString('en-US')}
 									</span>
 								{:else}
 									<span class="font-mono text-base text-slate-600">-</span>
