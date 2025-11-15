@@ -63,6 +63,40 @@ CREATE TABLE public.schema_migrations (
 
 
 --
+-- Name: strategies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.strategies (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    description text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+--
+-- Name: strategies_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.strategies_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: strategies_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.strategies_id_seq OWNED BY public.strategies.id;
+
+
+--
 -- Name: users; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -103,6 +137,13 @@ ALTER TABLE ONLY public.accounts ALTER COLUMN id SET DEFAULT nextval('public.acc
 
 
 --
+-- Name: strategies id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.strategies ALTER COLUMN id SET DEFAULT nextval('public.strategies_id_seq'::regclass);
+
+
+--
 -- Name: users id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -123,6 +164,14 @@ ALTER TABLE ONLY public.accounts
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: strategies strategies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.strategies
+    ADD CONSTRAINT strategies_pkey PRIMARY KEY (id);
 
 
 --
@@ -156,6 +205,13 @@ CREATE INDEX idx_accounts_user_id ON public.accounts USING btree (user_id);
 
 
 --
+-- Name: idx_strategies_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_strategies_user_id ON public.strategies USING btree (user_id);
+
+
+--
 -- Name: idx_users_email; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -171,6 +227,14 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- Name: strategies strategies_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.strategies
+    ADD CONSTRAINT strategies_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
@@ -181,4 +245,5 @@ ALTER TABLE ONLY public.accounts
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20250115000001'),
-    ('20250115000002');
+    ('20250115000002'),
+    ('20250115000003');

@@ -54,6 +54,24 @@ export interface UpdateAccountRequest {
 	is_active: boolean;
 }
 
+export interface Strategy {
+	id: number;
+	name: string;
+	description: string;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface CreateStrategyRequest {
+	name: string;
+	description: string;
+}
+
+export interface UpdateStrategyRequest {
+	name: string;
+	description: string;
+}
+
 class ApiClient {
 	private baseUrl: string;
 
@@ -157,6 +175,61 @@ class ApiClient {
 
 	async deleteAccount(id: number, token: string): Promise<{ data?: any; error?: string }> {
 		return this.request<any>(`/api/accounts/${id}`, {
+			method: 'DELETE',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+	}
+
+	// Strategy APIs
+	async getStrategies(token: string): Promise<{ data?: Strategy[]; error?: string }> {
+		return this.request<Strategy[]>('/api/strategies', {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+	}
+
+	async getStrategy(id: number, token: string): Promise<{ data?: Strategy; error?: string }> {
+		return this.request<Strategy>(`/api/strategies/${id}`, {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+	}
+
+	async createStrategy(
+		req: CreateStrategyRequest,
+		token: string
+	): Promise<{ data?: Strategy; error?: string }> {
+		return this.request<Strategy>('/api/strategies', {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify(req)
+		});
+	}
+
+	async updateStrategy(
+		id: number,
+		req: UpdateStrategyRequest,
+		token: string
+	): Promise<{ data?: Strategy; error?: string }> {
+		return this.request<Strategy>(`/api/strategies/${id}`, {
+			method: 'PUT',
+			headers: {
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify(req)
+		});
+	}
+
+	async deleteStrategy(id: number, token: string): Promise<{ data?: any; error?: string }> {
+		return this.request<any>(`/api/strategies/${id}`, {
 			method: 'DELETE',
 			headers: {
 				Authorization: `Bearer ${token}`

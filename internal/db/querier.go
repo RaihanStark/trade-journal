@@ -10,13 +10,18 @@ import (
 
 type Querier interface {
 	CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error)
+	CreateStrategy(ctx context.Context, arg CreateStrategyParams) (Strategy, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	DeleteAccount(ctx context.Context, arg DeleteAccountParams) error
+	DeleteStrategy(ctx context.Context, arg DeleteStrategyParams) error
 	GetAccountByID(ctx context.Context, arg GetAccountByIDParams) (Account, error)
 	GetAccountsByUserID(ctx context.Context, userID int32) ([]Account, error)
+	GetStrategiesByUserID(ctx context.Context, userID int32) ([]Strategy, error)
+	GetStrategyByID(ctx context.Context, arg GetStrategyByIDParams) (Strategy, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (GetUserByIDRow, error)
 	UpdateAccount(ctx context.Context, arg UpdateAccountParams) (Account, error)
+	UpdateStrategy(ctx context.Context, arg UpdateStrategyParams) (Strategy, error)
 }
 
 var _ Querier = (*Queries)(nil)

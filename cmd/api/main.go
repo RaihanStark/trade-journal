@@ -12,6 +12,7 @@ import (
 	_ "github.com/lib/pq"
 	accountapp "github.com/raihanstark/trade-journal/internal/application/account"
 	"github.com/raihanstark/trade-journal/internal/application/auth"
+	strategyapp "github.com/raihanstark/trade-journal/internal/application/strategy"
 	"github.com/raihanstark/trade-journal/internal/db"
 	"github.com/raihanstark/trade-journal/internal/infrastructure/http/handlers"
 	custommiddleware "github.com/raihanstark/trade-journal/internal/infrastructure/http/middleware"
@@ -57,15 +58,18 @@ func main() {
 	queries := db.New(dbConn)
 	userRepository := persistence.NewUserRepository(queries)
 	accountRepository := persistence.NewAccountRepository(queries)
+	strategyRepository := persistence.NewStrategyRepository(queries)
 	tokenGenerator := security.NewJWTTokenGenerator(jwtSecret)
 
 	// Initialize application layer
 	authService := auth.NewService(userRepository, tokenGenerator)
 	accountService := accountapp.NewService(accountRepository)
+	strategyService := strategyapp.NewService(strategyRepository)
 
 	// Initialize presentation layer
 	authHandler := handlers.NewAuthHandler(authService)
 	accountHandler := handlers.NewAccountHandler(accountService)
+	strategyHandler := handlers.NewStrategyHandler(strategyService)
 
 	// Create Echo instance
 	e := echo.New()
@@ -104,6 +108,13 @@ func main() {
 	protected.GET("/accounts/:id", accountHandler.GetAccount)
 	protected.PUT("/accounts/:id", accountHandler.UpdateAccount)
 	protected.DELETE("/accounts/:id", accountHandler.DeleteAccount)
+
+	// Strategy routes
+	protected.POST("/strategies", strategyHandler.CreateStrategy)
+	protected.GET("/strategies", strategyHandler.GetStrategies)
+	protected.GET("/strategies/:id", strategyHandler.GetStrategy)
+	protected.PUT("/strategies/:id", strategyHandler.UpdateStrategy)
+	protected.DELETE("/strategies/:id", strategyHandler.DeleteStrategy)
 
 	// Start server
 	log.Printf("Server starting on port %s", port)

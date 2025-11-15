@@ -21,6 +21,15 @@ type Account struct {
 	UpdatedAt     sql.NullTime `json:"updated_at"`
 }
 
+type Strategy struct {
+	ID          int32          `json:"id"`
+	UserID      int32          `json:"user_id"`
+	Name        string         `json:"name"`
+	Description sql.NullString `json:"description"`
+	CreatedAt   sql.NullTime   `json:"created_at"`
+	UpdatedAt   sql.NullTime   `json:"updated_at"`
+}
+
 type User struct {
 	ID           int32        `json:"id"`
 	Email        string       `json:"email"`
