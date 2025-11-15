@@ -8,12 +8,7 @@
 	const menuItems = [
 		{ id: 'dashboard', label: 'Dashboard', path: '/', icon: '▪' },
 		{ id: 'accounts', label: 'Accounts', path: '/accounts', icon: '▪' },
-		{ id: 'trades', label: 'Trades', path: '/trades', icon: '▪' },
-		{ id: 'analytics', label: 'Analytics', path: '/analytics', icon: '▪' },
-		{ id: 'journal', label: 'Journal', path: '/journal', icon: '▪' },
 		{ id: 'strategies', label: 'Strategies', path: '/strategies', icon: '▪' },
-		{ id: 'calendar', label: 'Calendar', path: '/calendar', icon: '▪' },
-		{ id: 'settings', label: 'Settings', path: '/settings', icon: '▪' }
 	];
 
 	function handleNavigation(path: string) {

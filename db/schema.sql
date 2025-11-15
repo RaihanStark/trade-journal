@@ -145,7 +145,7 @@ CREATE TABLE public.trades (
     lots numeric(10,2),
     pips numeric(10,2),
     pl numeric(20,2),
-    rr numeric(10,2),
+    rr character varying(20),
     status public.trade_status DEFAULT 'open'::public.trade_status NOT NULL,
     stop_loss numeric(20,8),
     take_profit numeric(20,8),
@@ -383,4 +383,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250115000001'),
     ('20250115000002'),
     ('20250115000003'),
-    ('20250115000004');
+    ('20250115000004'),
+    ('20250115000005');

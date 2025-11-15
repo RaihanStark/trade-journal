@@ -37,16 +37,15 @@ func (s *Service) CreateTrade(ctx context.Context, userID int64, req CreateTrade
 		Entry:      req.Entry,
 		Exit:       req.Exit,
 		Lots:       req.Lots,
-		Pips:       req.Pips,
-		PL:         req.PL,
-		RR:         req.RR,
-		Status:     trade.TradeStatus(req.Status),
 		StopLoss:   req.StopLoss,
 		TakeProfit: req.TakeProfit,
 		Notes:      req.Notes,
 		Mistakes:   req.Mistakes,
 		Amount:     req.Amount,
 	}
+
+	// Calculate metrics (pips, P/L, R:R, status)
+	CalculateTradeMetrics(t)
 
 	// Convert strategy IDs to Strategy objects
 	var strategies []trade.Strategy
@@ -109,16 +108,15 @@ func (s *Service) UpdateTrade(ctx context.Context, id int64, userID int64, req U
 		Entry:      req.Entry,
 		Exit:       req.Exit,
 		Lots:       req.Lots,
-		Pips:       req.Pips,
-		PL:         req.PL,
-		RR:         req.RR,
-		Status:     trade.TradeStatus(req.Status),
 		StopLoss:   req.StopLoss,
 		TakeProfit: req.TakeProfit,
 		Notes:      req.Notes,
 		Mistakes:   req.Mistakes,
 		Amount:     req.Amount,
 	}
+
+	// Calculate metrics (pips, P/L, R:R, status)
+	CalculateTradeMetrics(t)
 
 	// Convert strategy IDs to Strategy objects
 	var strategies []trade.Strategy

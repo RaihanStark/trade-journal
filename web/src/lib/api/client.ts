@@ -84,7 +84,7 @@ export interface Trade {
 	lots: number;
 	pips: number | null;
 	pl: number | null;
-	rr: number | null;
+	rr: string;
 	status: 'open' | 'closed';
 	stop_loss: number | null;
 	take_profit: number | null;
@@ -105,10 +105,6 @@ export interface CreateTradeRequest {
 	entry: number;
 	exit: number | null;
 	lots: number;
-	pips: number | null;
-	pl: number | null;
-	rr: number | null;
-	status: string;
 	stop_loss: number | null;
 	take_profit: number | null;
 	notes: string;
@@ -126,10 +122,6 @@ export interface UpdateTradeRequest {
 	entry: number;
 	exit: number | null;
 	lots: number;
-	pips: number | null;
-	pl: number | null;
-	rr: number | null;
-	status: string;
 	stop_loss: number | null;
 	take_profit: number | null;
 	notes: string;

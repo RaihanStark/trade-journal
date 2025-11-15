@@ -14,7 +14,7 @@ type TradeDTO struct {
 	Lots       float64    `json:"lots"`
 	Pips       *float64   `json:"pips"`
 	PL         *float64   `json:"pl"`
-	RR         *float64   `json:"rr"`
+	RR         string     `json:"rr"`
 	Status     string     `json:"status"`
 	StopLoss   *float64   `json:"stop_loss"`
 	TakeProfit *float64   `json:"take_profit"`
@@ -40,10 +40,6 @@ type CreateTradeRequest struct {
 	Entry       float64  `json:"entry"`
 	Exit        *float64 `json:"exit"`
 	Lots        float64  `json:"lots"`
-	Pips        *float64 `json:"pips"`
-	PL          *float64 `json:"pl"`
-	RR          *float64 `json:"rr"`
-	Status      string   `json:"status"`
 	StopLoss    *float64 `json:"stop_loss"`
 	TakeProfit  *float64 `json:"take_profit"`
 	Notes       string   `json:"notes"`
@@ -61,10 +57,6 @@ type UpdateTradeRequest struct {
 	Entry       float64  `json:"entry"`
 	Exit        *float64 `json:"exit"`
 	Lots        float64  `json:"lots"`
-	Pips        *float64 `json:"pips"`
-	PL          *float64 `json:"pl"`
-	RR          *float64 `json:"rr"`
-	Status      string   `json:"status"`
 	StopLoss    *float64 `json:"stop_loss"`
 	TakeProfit  *float64 `json:"take_profit"`
 	Notes       string   `json:"notes"`

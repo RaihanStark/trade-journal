@@ -31,7 +31,7 @@ type Trade struct {
 	Lots       float64
 	Pips       *float64
 	PL         *float64
-	RR         *float64
+	RR         string
 	Status     TradeStatus
 	StopLoss   *float64
 	TakeProfit *float64

@@ -336,9 +336,9 @@
 								{/if}
 							</td>
 							<td class="px-3 py-2 text-right">
-								{#if trade.rr !== null}
-									<span class={getPLColor(trade.rr) + ' font-mono text-sm'}>
-										{trade.rr > 0 ? '+' : ''}{trade.rr.toFixed(1)}
+								{#if trade.rr}
+									<span class="font-mono text-sm text-slate-200">
+										{trade.rr}
 									</span>
 								{:else}
 									<span class="font-mono text-sm text-slate-600">-</span>

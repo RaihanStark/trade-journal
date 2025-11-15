@@ -1,0 +1,5 @@
+-- migrate:up
+ALTER TABLE trades ALTER COLUMN rr TYPE VARCHAR(20);
+
+-- migrate:down
+ALTER TABLE trades ALTER COLUMN rr TYPE DECIMAL(10, 2) USING rr::DECIMAL(10, 2);
