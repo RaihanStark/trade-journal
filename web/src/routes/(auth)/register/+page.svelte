@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { authStore } from '$lib/stores/auth.svelte';
+
 	let email = $state('');
 	let password = $state('');
 	let confirmPassword = $state('');
@@ -23,18 +25,13 @@
 
 		isLoading = true;
 
-		// TODO: Implement actual registration
 		try {
-			// Simulate API call
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-
-			// For now, just log the registration data
-			console.log('Registration attempt:', { email, password });
-
-			// Redirect to login after successful registration
-			// window.location.href = '/login';
+			const err = await authStore.register(email, password);
+			if (err) {
+				error = err;
+			}
 		} catch (err) {
-			error = 'Registration failed. Please try again.';
+			error = 'An unexpected error occurred';
 		} finally {
 			isLoading = false;
 		}

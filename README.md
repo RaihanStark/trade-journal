@@ -113,13 +113,44 @@ The API will be available at `http://localhost:8080`
 
 ## Frontend Setup
 
+### 1. Environment Variables
+
 ```bash
 cd web
+cp .env.example .env
+```
+
+### 2. Install Dependencies and Run
+
+```bash
 npm install
 npm run dev
 ```
 
 The frontend will be available at `http://localhost:5173`
+
+## Quick Start (Full Stack)
+
+**Terminal 1 - Database:**
+```bash
+make docker-up
+make migrate-up
+```
+
+**Terminal 2 - Backend:**
+```bash
+make run
+```
+
+**Terminal 3 - Frontend:**
+```bash
+cd web
+npm run dev
+```
+
+Then visit:
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8080`
 
 ## Tech Stack
 

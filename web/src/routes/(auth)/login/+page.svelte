@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { authStore } from '$lib/stores/auth.svelte';
+
 	let email = $state('');
 	let password = $state('');
 	let error = $state('');
@@ -9,18 +11,13 @@
 		error = '';
 		isLoading = true;
 
-		// TODO: Implement actual authentication
 		try {
-			// Simulate API call
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-
-			// For now, just log the credentials
-			console.log('Login attempt:', { email, password });
-
-			// Redirect to dashboard after successful login
-			// window.location.href = '/';
+			const err = await authStore.login(email, password);
+			if (err) {
+				error = err;
+			}
 		} catch (err) {
-			error = 'Invalid email or password';
+			error = 'An unexpected error occurred';
 		} finally {
 			isLoading = false;
 		}

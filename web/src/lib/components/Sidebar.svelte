@@ -1,5 +1,9 @@
 <script lang="ts">
-	let currentPath = $state('/');
+	import { authStore } from '$lib/stores/auth.svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+
+	let currentPath = $derived($page.url.pathname);
 
 	const menuItems = [
 		{ id: 'dashboard', label: 'Dashboard', path: '/', icon: '▪' },
@@ -12,9 +16,11 @@
 	];
 
 	function handleNavigation(path: string) {
-		currentPath = path;
-		// In a real app, you'd use SvelteKit's navigation here
-		// goto(path);
+		goto(path);
+	}
+
+	function handleLogout() {
+		authStore.logout();
 	}
 </script>
 
@@ -46,14 +52,22 @@
 
 	<!-- Footer -->
 	<div class="border-t border-slate-800 px-4 py-3">
-		<div class="flex items-center gap-2">
+		<div class="mb-3 flex items-center gap-2">
 			<div class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[10px] font-bold text-slate-400">
-				U
+				{authStore.user?.email?.[0].toUpperCase() || 'U'}
 			</div>
 			<div class="flex-1 overflow-hidden">
-				<div class="truncate text-[10px] font-medium text-slate-400">User</div>
+				<div class="truncate text-[10px] font-medium text-slate-400">
+					{authStore.user?.email || 'User'}
+				</div>
 				<div class="truncate text-[9px] text-slate-600">Trader</div>
 			</div>
 		</div>
+		<button
+			onclick={handleLogout}
+			class="w-full border border-slate-700 px-2 py-1.5 text-[10px] font-medium uppercase text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-300"
+		>
+			Logout
+		</button>
 	</div>
 </aside>
