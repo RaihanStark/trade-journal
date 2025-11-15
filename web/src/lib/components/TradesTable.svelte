@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
+	import TagInput from './TagInput.svelte';
 
 	interface Trade {
 		id: number;
@@ -18,6 +19,7 @@
 		takeProfit?: number;
 		notes?: string;
 		strategy?: string;
+		strategies?: string[];
 		mistakes?: string;
 		amount?: number;
 	}
@@ -35,6 +37,7 @@
 	let expandedRows = $state<Set<number>>(new Set());
 	let editingField = $state<{ tradeId: number; field: string } | null>(null);
 	let editValue = $state<string>('');
+	let editStrategies = $state<string[]>([]);
 
 	function toggleRow(tradeId: number) {
 		if (expandedRows.has(tradeId)) {
@@ -47,18 +50,28 @@
 
 	function startEdit(tradeId: number, field: string, currentValue: any) {
 		editingField = { tradeId, field };
-		editValue = currentValue?.toString() || '';
+		if (field === 'strategies') {
+			editStrategies = currentValue || [];
+		} else {
+			editValue = currentValue?.toString() || '';
+		}
 	}
 
 	function saveEdit() {
 		// TODO: Implement save logic
-		console.log('Saving:', editingField, 'Value:', editValue);
+		if (editingField?.field === 'strategies') {
+			console.log('Saving:', editingField, 'Value:', editStrategies);
+		} else {
+			console.log('Saving:', editingField, 'Value:', editValue);
+		}
 		editingField = null;
+		editStrategies = [];
 	}
 
 	function cancelEdit() {
 		editingField = null;
 		editValue = '';
+		editStrategies = [];
 	}
 
 	function getPLColor(pl: number): string {
@@ -76,6 +89,24 @@
 		}
 		return 'loss';
 	}
+
+	const suggestedStrategies = [
+		'Trend Following',
+		'Support/Resistance',
+		'Breakout',
+		'Reversal',
+		'Range Trading',
+		'News Trading',
+		'Scalping',
+		'Swing Trading',
+		'Price Action',
+		'ICT Concepts',
+		'Smart Money Concepts',
+		'Supply & Demand',
+		'Fibonacci',
+		'Moving Average',
+		'Candlestick Patterns'
+	];
 </script>
 
 <div class="flex h-full flex-col bg-slate-900">
@@ -288,6 +319,68 @@
 							<td colspan="13" class="overflow-hidden p-0">
 								<div transition:slide={{ duration: 200 }} class="px-3 py-4">
 									<div class="grid grid-cols-2 gap-4 text-sm" onclick={(e) => e.stopPropagation()}>
+										<!-- Entry Price -->
+										<div class="flex items-center justify-between border-b border-slate-800/50 pb-2">
+										<span class="text-xs font-bold uppercase text-slate-500">ENTRY PRICE</span>
+										<div class="flex items-center gap-2">
+											{#if editingField?.tradeId === trade.id && editingField?.field === 'entry'}
+												<input
+													type="number"
+													step="0.00001"
+													bind:value={editValue}
+													class="w-32 border border-slate-700 bg-slate-900 px-2 py-1 font-mono text-xs text-slate-100 focus:border-blue-600 focus:outline-none"
+													autofocus
+												/>
+												<button
+													onclick={saveEdit}
+													class="text-emerald-400 hover:text-emerald-300"
+													aria-label="Save"
+												>
+													<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															stroke-width="2"
+															d="M5 13l4 4L19 7"
+														></path>
+													</svg>
+												</button>
+												<button
+													onclick={cancelEdit}
+													class="text-red-400 hover:text-red-300"
+													aria-label="Cancel"
+												>
+													<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															stroke-width="2"
+															d="M6 18L18 6M6 6l12 12"
+														></path>
+													</svg>
+												</button>
+											{:else}
+												<span class="font-mono text-sm text-slate-300">
+													{trade.entry.toFixed(trade.pair.includes('JPY') ? 2 : 4)}
+												</span>
+												<button
+													onclick={() => startEdit(trade.id, 'entry', trade.entry)}
+													class="text-slate-500 hover:text-slate-300"
+													aria-label="Edit entry price"
+												>
+													<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path
+															stroke-linecap="round"
+															stroke-linejoin="round"
+															stroke-width="2"
+															d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+														></path>
+													</svg>
+												</button>
+											{/if}
+										</div>
+									</div>
+
 										<!-- Exit Price -->
 										<div class="flex items-center justify-between border-b border-slate-800/50 pb-2">
 										<span class="text-xs font-bold uppercase text-slate-500">EXIT PRICE</span>
@@ -479,50 +572,45 @@
 									</div>
 
 									<!-- Strategy -->
-									<div class="flex items-center justify-between border-b border-slate-800/50 pb-2">
-										<span class="text-xs font-bold uppercase text-slate-500">STRATEGY</span>
-										<div class="flex items-center gap-2">
-											{#if editingField?.tradeId === trade.id && editingField?.field === 'strategy'}
-												<input
-													type="text"
-													bind:value={editValue}
-													class="w-48 border border-slate-700 bg-slate-900 px-2 py-1 font-mono text-xs text-slate-100 focus:border-blue-600 focus:outline-none"
-													autofocus
-												/>
-												<button
-													onclick={saveEdit}
-													class="text-emerald-400 hover:text-emerald-300"
-													aria-label="Save"
-												>
-													<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path
-															stroke-linecap="round"
-															stroke-linejoin="round"
-															stroke-width="2"
-															d="M5 13l4 4L19 7"
-														></path>
-													</svg>
-												</button>
-												<button
-													onclick={cancelEdit}
-													class="text-red-400 hover:text-red-300"
-													aria-label="Cancel"
-												>
-													<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-														<path
-															stroke-linecap="round"
-															stroke-linejoin="round"
-															stroke-width="2"
-															d="M6 18L18 6M6 6l12 12"
-														></path>
-													</svg>
-												</button>
+									<div class="col-span-2 flex flex-col gap-2 border-b border-slate-800/50 pb-2">
+										<div class="flex items-center justify-between">
+											<span class="text-xs font-bold uppercase text-slate-500">STRATEGIES</span>
+											{#if editingField?.tradeId === trade.id && editingField?.field === 'strategies'}
+												<div class="flex items-center gap-2">
+													<button
+														onclick={saveEdit}
+														class="text-emerald-400 hover:text-emerald-300"
+														aria-label="Save"
+													>
+														<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path
+																stroke-linecap="round"
+																stroke-linejoin="round"
+																stroke-width="2"
+																d="M5 13l4 4L19 7"
+															></path>
+														</svg>
+													</button>
+													<button
+														onclick={cancelEdit}
+														class="text-red-400 hover:text-red-300"
+														aria-label="Cancel"
+													>
+														<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path
+																stroke-linecap="round"
+																stroke-linejoin="round"
+																stroke-width="2"
+																d="M6 18L18 6M6 6l12 12"
+															></path>
+														</svg>
+													</button>
+												</div>
 											{:else}
-												<span class="text-sm text-slate-300">{trade.strategy || '-'}</span>
 												<button
-													onclick={() => startEdit(trade.id, 'strategy', trade.strategy)}
+													onclick={() => startEdit(trade.id, 'strategies', trade.strategies)}
 													class="text-slate-500 hover:text-slate-300"
-													aria-label="Edit strategy"
+													aria-label="Edit strategies"
 												>
 													<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 														<path
@@ -535,6 +623,26 @@
 												</button>
 											{/if}
 										</div>
+										{#if editingField?.tradeId === trade.id && editingField?.field === 'strategies'}
+											<TagInput
+												value={editStrategies}
+												suggestions={suggestedStrategies}
+												placeholder="Type to add or create strategies..."
+												onUpdate={(tags) => { editStrategies = tags; }}
+											/>
+										{:else}
+											{#if trade.strategies && trade.strategies.length > 0}
+												<div class="flex flex-wrap gap-1">
+													{#each trade.strategies as strategy}
+														<span class="inline-block bg-slate-700 px-2 py-0.5 text-xs text-slate-200">
+															{strategy}
+														</span>
+													{/each}
+												</div>
+											{:else}
+												<p class="text-sm text-slate-500">No strategies</p>
+											{/if}
+										{/if}
 									</div>
 
 									<!-- Notes -->

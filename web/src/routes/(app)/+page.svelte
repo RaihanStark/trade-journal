@@ -73,6 +73,7 @@
 		takeProfit?: number;
 		notes?: string;
 		strategy?: string;
+		strategies?: string[];
 		amount?: number;
 	}> = [
 		{
@@ -123,7 +124,8 @@
 			stopLoss: 1.0895,
 			takeProfit: 1.0955,
 			notes: 'Bullish trend continuation setup',
-			strategy: 'Trend Following'
+			strategy: 'Trend Following',
+			strategies: ['Trend Following', 'Price Action']
 		},
 		{
 			id: 2,
@@ -141,7 +143,8 @@
 			stopLoss: 1.267,
 			takeProfit: 1.26,
 			notes: 'Resistance level rejection',
-			strategy: 'Support/Resistance'
+			strategy: 'Support/Resistance',
+			strategies: ['Support/Resistance', 'Reversal']
 		},
 		{
 			id: 3,
@@ -159,7 +162,8 @@
 			stopLoss: 1.0905,
 			takeProfit: 1.0965,
 			notes: 'Perfect entry at support level. Hit TP exactly.',
-			strategy: 'Support/Resistance'
+			strategy: 'Support/Resistance',
+			strategies: ['Support/Resistance', 'Price Action', 'Fibonacci']
 		},
 		{
 			id: 4,
