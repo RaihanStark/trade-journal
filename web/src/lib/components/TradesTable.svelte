@@ -95,6 +95,7 @@
 					<th class="px-3 py-2 text-right text-xs font-bold uppercase text-slate-500">P/L</th>
 					<th class="px-3 py-2 text-right text-xs font-bold uppercase text-slate-500">R:R</th>
 					<th class="px-3 py-2 text-center text-xs font-bold uppercase text-slate-500">STATUS</th>
+					<th class="w-8 px-3 py-2"></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -141,6 +142,25 @@
 								>
 									{trade.type}
 								</span>
+							</td>
+							<td class="px-3 py-2">
+								<button
+									onclick={() => {
+										console.log('Delete transaction:', trade.id);
+										// TODO: Implement delete transaction
+									}}
+									class="text-slate-600 transition-colors hover:text-red-400"
+									aria-label="Delete transaction"
+								>
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+										></path>
+									</svg>
+								</button>
 							</td>
 						</tr>
 					{:else}
@@ -239,13 +259,33 @@
 									</span>
 								{/if}
 							</td>
+							<td class="px-3 py-2">
+								<button
+									onclick={(e) => {
+										e.stopPropagation();
+										console.log('Delete trade:', trade.id);
+										// TODO: Implement delete trade
+									}}
+									class="text-slate-600 transition-colors hover:text-red-400"
+									aria-label="Delete trade"
+								>
+									<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+										></path>
+									</svg>
+								</button>
+							</td>
 						</tr>
 					{/if}
 
 					<!-- Expanded Details Row -->
 					{#if expandedRows.has(trade.id)}
 						<tr class="border-b border-slate-800 bg-slate-950">
-							<td colspan="12" class="overflow-hidden p-0">
+							<td colspan="13" class="overflow-hidden p-0">
 								<div transition:slide={{ duration: 200 }} class="px-3 py-4">
 									<div class="grid grid-cols-2 gap-4 text-sm" onclick={(e) => e.stopPropagation()}>
 										<!-- Exit Price -->
