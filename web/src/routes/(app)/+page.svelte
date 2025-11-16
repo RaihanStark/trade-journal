@@ -30,6 +30,28 @@
 	let startDate = $state('');
 	let endDate = $state('');
 
+	// Computed sorted trades - open BUY/SELL trades always on top
+	let sortedTrades = $derived.by(() => {
+		return data.trades.then(trades => {
+			// Sort: open BUY/SELL trades first (regardless of date), then by date descending
+			return [...trades].sort((a, b) => {
+				const isAOpenTrade = a.status === 'open' && (a.type === 'BUY' || a.type === 'SELL');
+				const isBOpenTrade = b.status === 'open' && (b.type === 'BUY' || b.type === 'SELL');
+
+				// First sort by open BUY/SELL status (open trades first)
+				if (isAOpenTrade && !isBOpenTrade) return -1;
+				if (!isAOpenTrade && isBOpenTrade) return 1;
+
+				// Then sort by date descending
+				const dateCompare = b.date.localeCompare(a.date);
+				if (dateCompare !== 0) return dateCompare;
+
+				// Finally sort by time descending
+				return b.time.localeCompare(a.time);
+			});
+		});
+	});
+
 	async function reloadData() {
 		// Reload accounts store, trades, and analytics
 		if (!authStore.token) return;
@@ -274,7 +296,7 @@
 
 	<!-- Main Content -->
 	<div class="col-span-10 row-span-1 overflow-hidden border-r border-slate-800">
-		{#await data.trades}
+		{#await sortedTrades}
 			<div class="flex h-64 items-center justify-center">
 				<p class="text-slate-500">Loading trades...</p>
 			</div>
