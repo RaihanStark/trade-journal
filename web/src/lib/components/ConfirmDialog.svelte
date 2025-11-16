@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { fade, scale } from 'svelte/transition';
+
 	interface Props {
 		isOpen: boolean;
 		title: string;
@@ -42,8 +44,12 @@
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
+		transition:fade={{ duration: 200 }}
 	>
-		<div class="w-full max-w-md border border-slate-800 bg-slate-900 p-6">
+		<div
+			class="w-full max-w-md border border-slate-800 bg-slate-900 p-6"
+			transition:scale={{ duration: 200, start: 0.95 }}
+		>
 			<!-- Icon & Title -->
 			<div class="mb-4 flex items-start gap-4">
 				{#if variant === 'danger'}

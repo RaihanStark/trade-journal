@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { fade, scale } from 'svelte/transition';
 
 	interface Props {
 		isOpen: boolean;
@@ -40,8 +41,12 @@
 		role="dialog"
 		aria-modal="true"
 		tabindex="-1"
+		transition:fade={{ duration: 200 }}
 	>
-		<div class="w-full {sizeClasses[size]} border border-slate-800 bg-slate-900">
+		<div
+			class="w-full {sizeClasses[size]} border border-slate-800 bg-slate-900"
+			transition:scale={{ duration: 200, start: 0.95 }}
+		>
 			<!-- Header -->
 			<div class="flex items-center justify-between border-b border-slate-800 px-8 py-4">
 				<h2 class="text-xl font-bold text-slate-100">{title}</h2>
