@@ -1,66 +1,49 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import MetricCard from '$lib/components/MetricCard.svelte';
 	import TradesTable from '$lib/components/TradesTable.svelte';
 	import StatsGrid from '$lib/components/StatsGrid.svelte';
 	import AddTradeModal from '$lib/components/AddTradeModal.svelte';
 	import DepositModal from '$lib/components/DepositModal.svelte';
 	import WithdrawModal from '$lib/components/WithdrawModal.svelte';
-	import { apiClient, type Trade, type Account } from '$lib/api/client';
+	import { apiClient, type Trade } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { accountsStore } from '$lib/stores/accounts.svelte';
+
+	interface Props {
+		data: {
+			trades: Promise<Trade[]>;
+		};
+	}
+
+	let { data }: Props = $props();
 
 	let isModalOpen = $state(false);
 	let isDepositModalOpen = $state(false);
 	let isWithdrawModalOpen = $state(false);
-	let isLoading = $state(true);
-	let trades = $state<Trade[]>([]);
-	let accounts = $state<Account[]>([]);
 
 	// Filters
 	let selectedAccount = $state('all');
 	let startDate = $state('');
 	let endDate = $state('');
 
-	// Calculated totals
-	let totalBalance = $derived(() => {
-		return accounts.reduce((sum, account) => sum + account.current_balance, 0);
-	});
-
-	onMount(async () => {
-		await loadAccounts();
-		await loadTrades();
-	});
-
-	async function loadAccounts() {
+	async function reloadData() {
+		// Reload accounts store and trades
 		if (!authStore.token) return;
 
-		const { data, error } = await apiClient.getAccounts(authStore.token);
+		await accountsStore.reload();
 
-		if (error) {
-			console.error('Failed to load accounts:', error);
-			return;
-		}
+		const tradesPromise = apiClient.getTrades(authStore.token).then(({ data: tradesData, error }) => {
+			if (error) {
+				console.error('Failed to load trades:', error);
+				return [];
+			}
+			return tradesData || [];
+		});
 
-		if (data) {
-			accounts = data;
-		}
-	}
-
-	async function loadTrades() {
-		if (!authStore.token) return;
-
-		isLoading = true;
-		const { data, error } = await apiClient.getTrades(authStore.token);
-		isLoading = false;
-
-		if (error) {
-			console.error('Failed to load trades:', error);
-			return;
-		}
-
-		if (data) {
-			trades = data;
-		}
+		// Update the trades promise
+		data = {
+			trades: tradesPromise
+		};
 	}
 
 	function openModal() {
@@ -103,8 +86,7 @@
 		}
 
 		// Reload accounts and trades after delete (to update balance for deposit/withdraw deletions)
-		await loadAccounts();
-		await loadTrades();
+		await reloadData();
 	}
 
 	const metrics = {
@@ -118,215 +100,6 @@
 		maxDrawdown: -2340.2
 	};
 
-	// Keep mock data structure for reference but commented out
-	/*const recentTrades: Array<{
-		id: number;
-		date: string;
-		time: string;
-		pair: string;
-		type: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAW';
-		entry: number;
-		exit: number | null;
-		lots: number;
-		pips: number | null;
-		pl: number | null;
-		rr: number | null;
-		status: 'open' | 'closed';
-		stopLoss?: number;
-		takeProfit?: number;
-		notes?: string;
-		strategy?: string;
-		strategies?: string[];
-		amount?: number;
-	}> = [
-		{
-			id: 101,
-			date: '2025-01-14',
-			time: '10:30',
-			pair: '-',
-			type: 'DEPOSIT' as const,
-			entry: 0,
-			exit: null,
-			lots: 0,
-			pips: null,
-			pl: 5000,
-			rr: null,
-			status: 'closed' as const,
-			notes: 'Initial deposit to start trading',
-			amount: 5000
-		},
-		{
-			id: 102,
-			date: '2025-01-13',
-			time: '16:45',
-			pair: '-',
-			type: 'WITHDRAW' as const,
-			entry: 0,
-			exit: null,
-			lots: 0,
-			pips: null,
-			pl: -1000,
-			rr: null,
-			status: 'closed' as const,
-			notes: 'Partial profit withdrawal',
-			amount: 1000
-		},
-		{
-			id: 1,
-			date: '2025-01-13',
-			time: '08:45',
-			pair: 'EUR/USD',
-			type: 'BUY' as const,
-			entry: 1.0915,
-			exit: null,
-			lots: 0.5,
-			pips: null,
-			pl: null,
-			rr: null,
-			status: 'open' as const,
-			stopLoss: 1.0895,
-			takeProfit: 1.0955,
-			notes: 'Bullish trend continuation setup',
-			strategy: 'Trend Following',
-			strategies: ['Trend Following', 'Price Action']
-		},
-		{
-			id: 2,
-			date: '2025-01-13',
-			time: '07:20',
-			pair: 'GBP/USD',
-			type: 'SELL' as const,
-			entry: 1.265,
-			exit: null,
-			lots: 0.3,
-			pips: null,
-			pl: null,
-			rr: null,
-			status: 'open' as const,
-			stopLoss: 1.267,
-			takeProfit: 1.26,
-			notes: 'Resistance level rejection',
-			strategy: 'Support/Resistance',
-			strategies: ['Support/Resistance', 'Reversal']
-		},
-		{
-			id: 3,
-			date: '2025-01-12',
-			time: '14:30',
-			pair: 'EUR/USD',
-			type: 'BUY' as const,
-			entry: 1.0925,
-			exit: 1.0965,
-			lots: 0.5,
-			pips: 40,
-			pl: 200,
-			rr: 2.5,
-			status: 'closed' as const,
-			stopLoss: 1.0905,
-			takeProfit: 1.0965,
-			notes: 'Perfect entry at support level. Hit TP exactly.',
-			strategy: 'Support/Resistance',
-			strategies: ['Support/Resistance', 'Price Action', 'Fibonacci']
-		},
-		{
-			id: 4,
-			date: '2025-01-12',
-			time: '09:15',
-			pair: 'GBP/JPY',
-			type: 'SELL' as const,
-			entry: 188.45,
-			exit: 188.05,
-			lots: 0.3,
-			pips: 40,
-			pl: 120,
-			rr: 2.0,
-			status: 'closed' as const
-		},
-		{
-			id: 5,
-			date: '2025-01-11',
-			time: '16:45',
-			pair: 'USD/JPY',
-			type: 'BUY' as const,
-			entry: 145.2,
-			exit: 145.05,
-			lots: 0.4,
-			pips: -15,
-			pl: -60,
-			rr: -0.5,
-			status: 'closed' as const
-		},
-		{
-			id: 6,
-			date: '2025-01-11',
-			time: '11:20',
-			pair: 'EUR/GBP',
-			type: 'SELL' as const,
-			entry: 0.858,
-			exit: 0.8545,
-			lots: 0.6,
-			pips: 35,
-			pl: 210,
-			rr: 2.8,
-			status: 'closed' as const
-		},
-		{
-			id: 7,
-			date: '2025-01-10',
-			time: '13:00',
-			pair: 'AUD/USD',
-			type: 'BUY' as const,
-			entry: 0.672,
-			exit: 0.6705,
-			lots: 0.5,
-			pips: -15,
-			pl: -75,
-			rr: -0.6,
-			status: 'closed' as const
-		},
-		{
-			id: 8,
-			date: '2025-01-10',
-			time: '10:30',
-			pair: 'EUR/USD',
-			type: 'BUY' as const,
-			entry: 1.088,
-			exit: 1.092,
-			lots: 0.7,
-			pips: 40,
-			pl: 280,
-			rr: 3.2,
-			status: 'closed' as const
-		},
-		{
-			id: 9,
-			date: '2025-01-09',
-			time: '15:00',
-			pair: 'GBP/USD',
-			type: 'SELL' as const,
-			entry: 1.265,
-			exit: 1.26,
-			lots: 0.4,
-			pips: 50,
-			pl: 200,
-			rr: 2.5,
-			status: 'closed' as const
-		},
-		{
-			id: 10,
-			date: '2025-01-09',
-			time: '11:45',
-			pair: 'USD/CAD',
-			type: 'BUY' as const,
-			entry: 1.352,
-			exit: 1.348,
-			lots: 0.5,
-			pips: -40,
-			pl: -200,
-			rr: -1.5,
-			status: 'closed' as const
-		}
-	];*/
 </script>
 
 <div class="grid h-full grid-cols-12 grid-rows-[auto_auto_auto_1fr] bg-slate-950">
@@ -336,9 +109,9 @@
 	>
 		<div class="flex items-center gap-4">
 			<span class="font-mono text-xs text-slate-500">BAL:</span>
-			<span class="font-mono text-sm font-bold text-emerald-400">${totalBalance().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+			<span class="font-mono text-sm font-bold text-emerald-400">${accountsStore.accounts.reduce((sum, account) => sum + account.current_balance, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
 			<span class="font-mono text-xs text-slate-500">EQ:</span>
-			<span class="font-mono text-sm font-bold text-blue-400">${totalBalance().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+			<span class="font-mono text-sm font-bold text-blue-400">${accountsStore.accounts.reduce((sum, account) => sum + account.current_balance, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
 		</div>
 		<div class="flex items-center gap-2">
 			<button onclick={openDepositModal} class="bg-emerald-800 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-700">+ DEPOSIT</button>
@@ -358,7 +131,7 @@
 					class="border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300 focus:border-slate-600 focus:outline-none"
 				>
 					<option value="all">All Accounts</option>
-					{#each accounts as account}
+					{#each accountsStore.accounts as account}
 						<option value={account.id}>{account.name} - {account.broker}</option>
 					{/each}
 				</select>
@@ -409,13 +182,13 @@
 
 	<!-- Main Content -->
 	<div class="col-span-10 row-span-1 border-r border-slate-800">
-		{#if isLoading}
+		{#await data.trades}
 			<div class="flex h-64 items-center justify-center">
 				<p class="text-slate-500">Loading trades...</p>
 			</div>
-		{:else}
-			<TradesTable {trades} onDelete={handleDeleteTrade} onUpdate={loadTrades} />
-		{/if}
+		{:then trades}
+			<TradesTable {trades} onDelete={handleDeleteTrade} onUpdate={reloadData} />
+		{/await}
 	</div>
 
 	<div class="col-span-2 row-span-1">
@@ -423,6 +196,6 @@
 	</div>
 </div>
 
-<AddTradeModal isOpen={isModalOpen} onClose={closeModal} onSuccess={loadTrades} />
-<DepositModal isOpen={isDepositModalOpen} onClose={closeDepositModal} onSuccess={async () => { await loadAccounts(); await loadTrades(); }} />
-<WithdrawModal isOpen={isWithdrawModalOpen} onClose={closeWithdrawModal} onSuccess={async () => { await loadAccounts(); await loadTrades(); }} />
+<AddTradeModal isOpen={isModalOpen} onClose={closeModal} onSuccess={reloadData} />
+<DepositModal isOpen={isDepositModalOpen} onClose={closeDepositModal} onSuccess={reloadData} />
+<WithdrawModal isOpen={isWithdrawModalOpen} onClose={closeWithdrawModal} onSuccess={reloadData} />

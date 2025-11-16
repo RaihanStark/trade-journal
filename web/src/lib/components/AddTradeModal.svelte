@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import Modal from './Modal.svelte';
 	import TagInput from './TagInput.svelte';
-	import { apiClient, type Account, type Strategy } from '$lib/api/client';
+	import { apiClient } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { accountsStore } from '$lib/stores/accounts.svelte';
+	import { strategiesStore } from '$lib/stores/strategies.svelte';
 
 	interface Props {
 		isOpen: boolean;
@@ -27,29 +28,6 @@
 	let notes = $state('');
 	let isSubmitting = $state(false);
 
-	let accounts = $state<Account[]>([]);
-	let strategies = $state<Strategy[]>([]);
-
-	onMount(async () => {
-		await loadData();
-	});
-
-	async function loadData() {
-		if (!authStore.token) return;
-
-		// Load accounts
-		const { data: accountsData, error: accountsError } = await apiClient.getAccounts(authStore.token);
-		if (accountsData) {
-			accounts = accountsData;
-		}
-
-		// Load strategies
-		const { data: strategiesData, error: strategiesError } = await apiClient.getStrategies(authStore.token);
-		if (strategiesData) {
-			strategies = strategiesData;
-		}
-	}
-
 	async function handleSubmit() {
 		if (!authStore.token || isSubmitting) return;
 
@@ -58,13 +36,13 @@
 		// Find strategy IDs from selected names
 		const strategyIds: number[] = [];
 		for (const name of selectedStrategyNames) {
-			let strategy = strategies.find(s => s.name === name);
+			let strategy = strategiesStore.strategies.find(s => s.name === name);
 			if (!strategy) {
 				// Create new strategy if it doesn't exist
-				const { data, error } = await apiClient.createStrategy({ name, description: '' }, authStore.token);
+				const { data } = await apiClient.createStrategy({ name, description: '' }, authStore.token);
 				if (data) {
 					strategy = data;
-					strategies = [...strategies, data];
+					await strategiesStore.add(data);
 				}
 			}
 			if (strategy) {
@@ -136,7 +114,7 @@
 	];
 
 	// Get strategy names for suggestions
-	let strategyNames = $derived(strategies.map(s => s.name));
+	let strategyNames = $derived(strategiesStore.strategies.map(s => s.name));
 </script>
 
 <Modal {isOpen} title="Add New Trade" size="lg" {onClose}>
@@ -154,7 +132,7 @@
 					class="mt-1 w-full border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none"
 				>
 					<option value="">Select account</option>
-					{#each accounts as account}
+					{#each accountsStore.accounts as account}
 						<option value={account.id}>{account.name} - {account.broker}</option>
 					{/each}
 				</select>

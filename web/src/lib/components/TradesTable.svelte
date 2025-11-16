@@ -1,31 +1,9 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import TagInput from './TagInput.svelte';
-	import { apiClient, type Strategy } from '$lib/api/client';
+	import { apiClient, type Trade } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth.svelte';
-
-	interface Trade {
-		id: number;
-		account_id: number | null;
-		date: string;
-		time: string;
-		pair: string;
-		type: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAW';
-		entry: number;
-		exit: number | null;
-		lots: number;
-		pips: number | null;
-		pl: number | null;
-		rr: number | null;
-		status: 'open' | 'closed';
-		stop_loss?: number | null;
-		take_profit?: number | null;
-		notes?: string;
-		strategy?: string;
-		strategies?: Array<{ id: number; name: string }>;
-		mistakes?: string;
-		amount?: number | null;
-	}
+	import { strategiesStore } from '$lib/stores/strategies.svelte';
 
 	function isTransaction(trade: Trade): boolean {
 		return trade.type === 'DEPOSIT' || trade.type === 'WITHDRAW';
@@ -43,22 +21,6 @@
 	let editingField = $state<{ tradeId: number; field: string } | null>(null);
 	let editValue = $state<string>('');
 	let editStrategyNames = $state<string[]>([]);
-	let allStrategies = $state<Strategy[]>([]);
-
-	// Load all strategies on mount for editing
-	$effect(() => {
-		if (authStore.token) {
-			loadStrategies();
-		}
-	});
-
-	async function loadStrategies() {
-		if (!authStore.token) return;
-		const { data } = await apiClient.getStrategies(authStore.token);
-		if (data) {
-			allStrategies = data;
-		}
-	}
 
 	function toggleRow(tradeId: number) {
 		if (expandedRows.has(tradeId)) {
@@ -112,12 +74,12 @@
 				// Find or create strategies
 				const strategyIds: number[] = [];
 				for (const name of editStrategyNames) {
-					let strategy = allStrategies.find(s => s.name === name);
+					let strategy = strategiesStore.strategies.find(s => s.name === name);
 					if (!strategy) {
 						const { data } = await apiClient.createStrategy({ name, description: '' }, authStore.token);
 						if (data) {
 							strategy = data;
-							allStrategies = [...allStrategies, data];
+							await strategiesStore.add(data);
 						}
 					}
 					if (strategy) {
@@ -180,7 +142,7 @@
 	}
 
 	// Get strategy names for suggestions
-	let strategyNames = $derived(allStrategies.map(s => s.name));
+	let strategyNames = $derived(strategiesStore.strategies.map(s => s.name));
 </script>
 
 <div class="flex h-full flex-col bg-slate-900">
