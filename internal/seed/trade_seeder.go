@@ -62,8 +62,8 @@ func (s *TradeSeeder) SeedForAccount(ctx context.Context, userID, accountID int6
 		lots := gofakeit.Float64Range(0.01, 2.0)
 
 		var exitPtr *float64
-		// 60% chance of closed trade
-		if rand.Float64() < 0.6 {
+
+		if rand.Float64() < 0.95 {
 			// 55% win rate
 			isWin := rand.Float64() < 0.55
 
