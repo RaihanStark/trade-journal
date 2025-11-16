@@ -16,6 +16,9 @@ COPY . .
 ARG VITE_API_URL=http://localhost:8080
 ENV VITE_API_URL=$VITE_API_URL
 
+# Limit Node memory during build to prevent hanging on low-memory VPS
+ENV NODE_OPTIONS="--max-old-space-size=512"
+
 # Build the application
 RUN npm run build
 
