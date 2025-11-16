@@ -13,7 +13,7 @@ export const load: PageLoad = async () => {
 		strategiesStore.load()
 	]);
 
-	// Return trades promise
+	// Return trades and analytics promises
 	const tradesPromise = token
 		? apiClient.getTrades(token).then(({ data, error }) => {
 				if (error) {
@@ -24,7 +24,18 @@ export const load: PageLoad = async () => {
 		  })
 		: Promise.resolve([]);
 
+	const analyticsPromise = token
+		? apiClient.getAnalytics(token).then(({ data, error }) => {
+				if (error) {
+					console.error('Failed to load analytics:', error);
+					return null;
+				}
+				return data || null;
+		  })
+		: Promise.resolve(null);
+
 	return {
-		trades: tradesPromise
+		trades: tradesPromise,
+		analytics: analyticsPromise
 	};
 };

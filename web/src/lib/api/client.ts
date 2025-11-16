@@ -131,6 +131,26 @@ export interface UpdateTradeRequest {
 	strategy_ids: number[];
 }
 
+export interface Analytics {
+	total_pl: number;
+	win_rate: number;
+	total_trades: number;
+	winning_trades: number;
+	losing_trades: number;
+	avg_win: number;
+	avg_loss: number;
+	profit_factor: number;
+	sharpe_ratio: number;
+	max_drawdown: number;
+	largest_win: number;
+	largest_loss: number;
+	avg_rr: number;
+	consecutive_wins: number;
+	consecutive_losses: number;
+	best_streak: number;
+	worst_streak: number;
+}
+
 class ApiClient {
 	private baseUrl: string;
 
@@ -350,6 +370,16 @@ class ApiClient {
 	async deleteTrade(id: number, token: string): Promise<{ data?: any; error?: string }> {
 		return this.request<any>(`/api/trades/${id}`, {
 			method: 'DELETE',
+			headers: {
+				Authorization: `Bearer ${token}`
+			}
+		});
+	}
+
+	// Analytics APIs
+	async getAnalytics(token: string): Promise<{ data?: Analytics; error?: string }> {
+		return this.request<Analytics>('/api/analytics', {
+			method: 'GET',
 			headers: {
 				Authorization: `Bearer ${token}`
 			}

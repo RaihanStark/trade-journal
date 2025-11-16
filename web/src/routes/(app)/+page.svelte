@@ -6,13 +6,14 @@
 	import DepositModal from '$lib/components/DepositModal.svelte';
 	import WithdrawModal from '$lib/components/WithdrawModal.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { apiClient, type Trade } from '$lib/api/client';
+	import { apiClient, type Trade, type Analytics } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { accountsStore } from '$lib/stores/accounts.svelte';
 
 	interface Props {
 		data: {
 			trades: Promise<Trade[]>;
+			analytics: Promise<Analytics | null>;
 		};
 	}
 
@@ -30,7 +31,7 @@
 	let endDate = $state('');
 
 	async function reloadData() {
-		// Reload accounts store and trades
+		// Reload accounts store, trades, and analytics
 		if (!authStore.token) return;
 
 		await accountsStore.reload();
@@ -43,9 +44,18 @@
 			return tradesData || [];
 		});
 
-		// Update the trades promise
+		const analyticsPromise = apiClient.getAnalytics(authStore.token).then(({ data: analyticsData, error }) => {
+			if (error) {
+				console.error('Failed to load analytics:', error);
+				return null;
+			}
+			return analyticsData || null;
+		});
+
+		// Update the data
 		data = {
-			trades: tradesPromise
+			trades: tradesPromise,
+			analytics: analyticsPromise
 		};
 	}
 
@@ -104,18 +114,6 @@
 		// Close the confirmation dialog
 		closeDeleteConfirm();
 	}
-
-	const metrics = {
-		totalPL: 15420.5,
-		winRate: 64.5,
-		totalTrades: 128,
-		avgWin: 240.3,
-		avgLoss: -180.5,
-		profitFactor: 1.85,
-		sharpeRatio: 2.14,
-		maxDrawdown: -2340.2
-	};
-
 </script>
 
 <div class="grid h-full grid-cols-12 grid-rows-[auto_auto_auto_1fr] bg-slate-950">
@@ -186,14 +184,76 @@
 
 	<!-- Metrics -->
 	<div class="col-span-12 grid grid-cols-8 border-b border-slate-800">
-		<MetricCard title="P/L" value="$15,420" change="+12.4%" trend="up" />
-		<MetricCard title="WIN%" value="64.5%" change="+2.3%" trend="up" />
-		<MetricCard title="TRADES" value="128" change="+8" trend="neutral" />
-		<MetricCard title="PF" value="1.85" change="+0.15" trend="up" />
-		<MetricCard title="AVG W" value="$240" change="+5.2%" trend="up" />
-		<MetricCard title="AVG L" value="$181" change="-3.1%" trend="down" />
-		<MetricCard title="SHARPE" value="2.14" change="+0.08" trend="up" />
-		<MetricCard title="DD" value="$2,340" change="-2.1%" trend="down" />
+		{#await data.analytics}
+			<MetricCard title="P/L" value="--" change="" trend="neutral" />
+			<MetricCard title="WIN%" value="--" change="" trend="neutral" />
+			<MetricCard title="TRADES" value="--" change="" trend="neutral" />
+			<MetricCard title="PF" value="--" change="" trend="neutral" />
+			<MetricCard title="AVG W" value="--" change="" trend="neutral" />
+			<MetricCard title="AVG L" value="--" change="" trend="neutral" />
+			<MetricCard title="SHARPE" value="--" change="" trend="neutral" />
+			<MetricCard title="DD" value="--" change="" trend="neutral" />
+		{:then analytics}
+			{#if analytics}
+				<MetricCard
+					title="P/L"
+					value={`$${analytics.total_pl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+					change=""
+					trend={analytics.total_pl > 0 ? 'up' : analytics.total_pl < 0 ? 'down' : 'neutral'}
+				/>
+				<MetricCard
+					title="WIN%"
+					value={`${analytics.win_rate.toFixed(1)}%`}
+					change=""
+					trend="neutral"
+				/>
+				<MetricCard
+					title="TRADES"
+					value={String(analytics.total_trades)}
+					change=""
+					trend="neutral"
+				/>
+				<MetricCard
+					title="PF"
+					value={analytics.profit_factor.toFixed(2)}
+					change=""
+					trend={analytics.profit_factor > 1 ? 'up' : 'down'}
+				/>
+				<MetricCard
+					title="AVG W"
+					value={`$${Math.abs(analytics.avg_win).toFixed(0)}`}
+					change=""
+					trend="up"
+				/>
+				<MetricCard
+					title="AVG L"
+					value={`$${Math.abs(analytics.avg_loss).toFixed(0)}`}
+					change=""
+					trend="down"
+				/>
+				<MetricCard
+					title="SHARPE"
+					value={analytics.sharpe_ratio.toFixed(2)}
+					change=""
+					trend={analytics.sharpe_ratio > 0 ? 'up' : 'down'}
+				/>
+				<MetricCard
+					title="DD"
+					value={`$${Math.abs(analytics.max_drawdown).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+					change=""
+					trend="down"
+				/>
+			{:else}
+				<MetricCard title="P/L" value="--" change="" trend="neutral" />
+				<MetricCard title="WIN%" value="--" change="" trend="neutral" />
+				<MetricCard title="TRADES" value="--" change="" trend="neutral" />
+				<MetricCard title="PF" value="--" change="" trend="neutral" />
+				<MetricCard title="AVG W" value="--" change="" trend="neutral" />
+				<MetricCard title="AVG L" value="--" change="" trend="neutral" />
+				<MetricCard title="SHARPE" value="--" change="" trend="neutral" />
+				<MetricCard title="DD" value="--" change="" trend="neutral" />
+			{/if}
+		{/await}
 	</div>
 
 	<!-- Main Content -->
@@ -208,7 +268,28 @@
 	</div>
 
 	<div class="col-span-2 row-span-1">
-		<StatsGrid {metrics} />
+		{#await data.analytics}
+			<div class="flex h-full items-center justify-center">
+				<p class="text-xs text-slate-500">Loading...</p>
+			</div>
+		{:then analytics}
+			{#if analytics}
+				<StatsGrid metrics={{
+					totalPL: analytics.total_pl,
+					winRate: analytics.win_rate,
+					totalTrades: analytics.total_trades,
+					avgWin: analytics.avg_win,
+					avgLoss: analytics.avg_loss,
+					profitFactor: analytics.profit_factor,
+					sharpeRatio: analytics.sharpe_ratio,
+					maxDrawdown: analytics.max_drawdown
+				}} />
+			{:else}
+				<div class="flex h-full items-center justify-center">
+					<p class="text-xs text-slate-500">No data</p>
+				</div>
+			{/if}
+		{/await}
 	</div>
 </div>
 
