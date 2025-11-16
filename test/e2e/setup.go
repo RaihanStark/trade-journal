@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	accountapp "github.com/raihanstark/trade-journal/internal/application/account"
+	analyticsapp "github.com/raihanstark/trade-journal/internal/application/analytics"
 	"github.com/raihanstark/trade-journal/internal/application/auth"
 	strategyapp "github.com/raihanstark/trade-journal/internal/application/strategy"
 	tradeapp "github.com/raihanstark/trade-journal/internal/application/trade"
@@ -26,6 +27,7 @@ func setupTestServer(t *testing.T, _ *sql.DB, queries *db.Queries) *echo.Echo {
 	accountRepository := persistence.NewAccountRepository(queries)
 	strategyRepository := persistence.NewStrategyRepository(queries)
 	tradeRepository := persistence.NewTradeRepository(queries)
+	analyticsRepository := persistence.NewAnalyticsRepository(queries)
 	tokenGenerator := security.NewJWTTokenGenerator("test-secret-key")
 
 	// Initialize application layer
@@ -33,12 +35,14 @@ func setupTestServer(t *testing.T, _ *sql.DB, queries *db.Queries) *echo.Echo {
 	accountService := accountapp.NewService(accountRepository)
 	strategyService := strategyapp.NewService(strategyRepository)
 	tradeService := tradeapp.NewService(tradeRepository, accountRepository)
+	analyticsService := analyticsapp.NewService(analyticsRepository)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	accountHandler := handlers.NewAccountHandler(accountService)
 	strategyHandler := handlers.NewStrategyHandler(strategyService)
 	tradeHandler := handlers.NewTradeHandler(tradeService)
+	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 
 	// Create Echo instance
 	e := echo.New()
@@ -72,6 +76,9 @@ func setupTestServer(t *testing.T, _ *sql.DB, queries *db.Queries) *echo.Echo {
 	protected.GET("/trades/:id", tradeHandler.GetTrade)
 	protected.PUT("/trades/:id", tradeHandler.UpdateTrade)
 	protected.DELETE("/trades/:id", tradeHandler.DeleteTrade)
+
+	// Analytics routes
+	protected.GET("/analytics", analyticsHandler.GetUserAnalytics)
 
 	return e
 }
