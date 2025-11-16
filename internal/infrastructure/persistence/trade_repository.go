@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strconv"
+	"time"
 
 	"github.com/raihanstark/trade-journal/internal/db"
 	infradb "github.com/raihanstark/trade-journal/internal/db"
@@ -103,6 +104,51 @@ func (r *TradeRepository) GetByID(ctx context.Context, id int64, userID int64) (
 
 func (r *TradeRepository) GetByUserID(ctx context.Context, userID int64) ([]*trade.Trade, error) {
 	results, err := r.queries.GetTradesByUserID(ctx, int32(userID))
+	if err != nil {
+		return nil, err
+	}
+
+	trades := make([]*trade.Trade, len(results))
+	for i, result := range results {
+		strategies, err := r.queries.GetTradeStrategies(ctx, result.ID)
+		if err != nil {
+			return nil, err
+		}
+		trades[i] = r.toDomain(&result, strategies)
+	}
+
+	return trades, nil
+}
+
+func (r *TradeRepository) GetByUserIDAndDateRange(ctx context.Context, userID int64, startDate, endDate time.Time) ([]*trade.Trade, error) {
+	results, err := r.queries.GetTradesByUserIDAndDateRange(ctx, db.GetTradesByUserIDAndDateRangeParams{
+		UserID:   int32(userID),
+		Date:     startDate,
+		Date_2:   endDate,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	trades := make([]*trade.Trade, len(results))
+	for i, result := range results {
+		strategies, err := r.queries.GetTradeStrategies(ctx, result.ID)
+		if err != nil {
+			return nil, err
+		}
+		trades[i] = r.toDomain(&result, strategies)
+	}
+
+	return trades, nil
+}
+
+func (r *TradeRepository) GetByAccountIDAndDateRange(ctx context.Context, accountID int64, userID int64, startDate, endDate time.Time) ([]*trade.Trade, error) {
+	results, err := r.queries.GetTradesByAccountIDAndDateRange(ctx, db.GetTradesByAccountIDAndDateRangeParams{
+		AccountID: sql.NullInt32{Int32: int32(accountID), Valid: true},
+		UserID:    int32(userID),
+		Date:      startDate,
+		Date_2:    endDate,
+	})
 	if err != nil {
 		return nil, err
 	}

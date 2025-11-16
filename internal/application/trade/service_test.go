@@ -59,6 +59,14 @@ func (s *TradeRepositorySpy) GetByUserID(ctx context.Context, userID int64) ([]*
 	return nil, errors.New("not implemented")
 }
 
+func (s *TradeRepositorySpy) GetByUserIDAndDateRange(ctx context.Context, userID int64, startDate, endDate time.Time) ([]*tradedom.Trade, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (s *TradeRepositorySpy) GetByAccountIDAndDateRange(ctx context.Context, accountID int64, userID int64, startDate, endDate time.Time) ([]*tradedom.Trade, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (s *TradeRepositorySpy) Update(ctx context.Context, trade *tradedom.Trade) (*tradedom.Trade, error) {
 	s.UpdateCalls = append(s.UpdateCalls, trade)
 	return s.UpdateResult, s.UpdateError
@@ -701,6 +709,86 @@ func TestService_DeleteTrade_RevertsBalance(t *testing.T) {
 		balanceCall := accountSpy.UpdateBalanceCalls[0]
 		if balanceCall.Amount != -50.0 {
 			t.Errorf("expected balance revert -50.0, got %.2f", balanceCall.Amount)
+		}
+	})
+}
+
+func TestService_GetUserTradesWithDateFilter(t *testing.T) {
+	t.Run("returns error when start_date format is invalid", func(t *testing.T) {
+		tradeRepo := &TradeRepositorySpy{}
+		accountRepo := &AccountRepositorySpy{}
+		service := NewService(tradeRepo, accountRepo)
+
+		invalidDate := "invalid-date"
+		endDate := "2025-01-16"
+
+		_, err := service.GetUserTradesWithDateFilter(context.Background(), 1, &invalidDate, &endDate)
+
+		if err == nil {
+			t.Fatal("expected error for invalid start_date")
+		}
+
+		if err.Error() != "invalid start_date format, expected YYYY-MM-DD" {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	})
+
+	t.Run("returns error when end_date format is invalid", func(t *testing.T) {
+		tradeRepo := &TradeRepositorySpy{}
+		accountRepo := &AccountRepositorySpy{}
+		service := NewService(tradeRepo, accountRepo)
+
+		startDate := "2025-01-15"
+		invalidDate := "not-a-date"
+
+		_, err := service.GetUserTradesWithDateFilter(context.Background(), 1, &startDate, &invalidDate)
+
+		if err == nil {
+			t.Fatal("expected error for invalid end_date")
+		}
+
+		if err.Error() != "invalid end_date format, expected YYYY-MM-DD" {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	})
+}
+
+func TestService_GetTradesByAccountIDWithDateFilter(t *testing.T) {
+	t.Run("returns error when start_date format is invalid", func(t *testing.T) {
+		tradeRepo := &TradeRepositorySpy{}
+		accountRepo := &AccountRepositorySpy{}
+		service := NewService(tradeRepo, accountRepo)
+
+		invalidDate := "bad-format"
+		endDate := "2025-01-16"
+
+		_, err := service.GetTradesByAccountIDWithDateFilter(context.Background(), 1, 1, &invalidDate, &endDate)
+
+		if err == nil {
+			t.Fatal("expected error for invalid start_date")
+		}
+
+		if err.Error() != "invalid start_date format, expected YYYY-MM-DD" {
+			t.Errorf("unexpected error message: %v", err)
+		}
+	})
+
+	t.Run("returns error when end_date format is invalid", func(t *testing.T) {
+		tradeRepo := &TradeRepositorySpy{}
+		accountRepo := &AccountRepositorySpy{}
+		service := NewService(tradeRepo, accountRepo)
+
+		startDate := "2025-01-15"
+		invalidDate := "2025/01/16"
+
+		_, err := service.GetTradesByAccountIDWithDateFilter(context.Background(), 1, 1, &startDate, &invalidDate)
+
+		if err == nil {
+			t.Fatal("expected error for invalid end_date")
+		}
+
+		if err.Error() != "invalid end_date format, expected YYYY-MM-DD" {
+			t.Errorf("unexpected error message: %v", err)
 		}
 	})
 }

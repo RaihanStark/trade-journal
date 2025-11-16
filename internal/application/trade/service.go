@@ -128,6 +128,68 @@ func (s *Service) GetUserTrades(ctx context.Context, userID int64) ([]*TradeDTO,
 	return dtos, nil
 }
 
+func (s *Service) GetUserTradesWithDateFilter(ctx context.Context, userID int64, startDate, endDate *string) ([]*TradeDTO, error) {
+	// If no date filter provided, return all trades
+	if startDate == nil || endDate == nil {
+		return s.GetUserTrades(ctx, userID)
+	}
+
+	// Parse dates
+	start, err := time.Parse("2006-01-02", *startDate)
+	if err != nil {
+		return nil, errors.New("invalid start_date format, expected YYYY-MM-DD")
+	}
+
+	end, err := time.Parse("2006-01-02", *endDate)
+	if err != nil {
+		return nil, errors.New("invalid end_date format, expected YYYY-MM-DD")
+	}
+
+	// Get filtered trades
+	trades, err := s.repo.GetByUserIDAndDateRange(ctx, userID, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	dtos := make([]*TradeDTO, len(trades))
+	for i, t := range trades {
+		dtos[i] = s.toDTO(t)
+	}
+
+	return dtos, nil
+}
+
+func (s *Service) GetTradesByAccountIDWithDateFilter(ctx context.Context, accountID int64, userID int64, startDate, endDate *string) ([]*TradeDTO, error) {
+	// If no date filter provided, return all trades for account
+	if startDate == nil || endDate == nil {
+		return s.GetTradesByAccountID(ctx, accountID, userID)
+	}
+
+	// Parse dates
+	start, err := time.Parse("2006-01-02", *startDate)
+	if err != nil {
+		return nil, errors.New("invalid start_date format, expected YYYY-MM-DD")
+	}
+
+	end, err := time.Parse("2006-01-02", *endDate)
+	if err != nil {
+		return nil, errors.New("invalid end_date format, expected YYYY-MM-DD")
+	}
+
+	// Get filtered trades
+	trades, err := s.repo.GetByAccountIDAndDateRange(ctx, accountID, userID, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	dtos := make([]*TradeDTO, len(trades))
+	for i, t := range trades {
+		dtos[i] = s.toDTO(t)
+	}
+
+	return dtos, nil
+}
+
 func (s *Service) GetTrade(ctx context.Context, id int64, userID int64) (*TradeDTO, error) {
 	t, err := s.repo.GetByID(ctx, id, userID)
 	if err != nil {

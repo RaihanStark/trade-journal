@@ -322,8 +322,29 @@ class ApiClient {
 	}
 
 	// Trade APIs
-	async getTrades(token: string, accountId?: number): Promise<{ data?: Trade[]; error?: string }> {
-		const url = accountId ? `/api/trades?account_id=${accountId}` : '/api/trades';
+	async getTrades(
+		token: string,
+		accountId?: number,
+		startDate?: string,
+		endDate?: string
+	): Promise<{ data?: Trade[]; error?: string }> {
+		const params = new URLSearchParams();
+
+		if (accountId) {
+			params.append('account_id', accountId.toString());
+		}
+
+		if (startDate) {
+			params.append('start_date', startDate);
+		}
+
+		if (endDate) {
+			params.append('end_date', endDate);
+		}
+
+		const queryString = params.toString();
+		const url = queryString ? `/api/trades?${queryString}` : '/api/trades';
+
 		return this.request<Trade[]>(url, {
 			method: 'GET',
 			headers: {

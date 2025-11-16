@@ -40,7 +40,7 @@ func TestE2E_Analytics_GetUserAnalytics(t *testing.T) {
 		}
 
 		for _, trade := range trades {
-			createTrade(t, e, authToken, accountID, trade.tradeType, 1.1000, &trade.exit)
+			createTrade(t, e, authToken, accountID, trade.tradeType, 1.1000, &trade.exit, "2025-01-01")
 		}
 
 		// Call analytics endpoint
@@ -124,10 +124,10 @@ func TestE2E_Analytics_FiltersOpenTrades(t *testing.T) {
 	t.Run("filters out open trades from analytics", func(t *testing.T) {
 		// Create closed trade
 		exit := 1.1100
-		createTrade(t, e, authToken, accountID, "BUY", 1.1000, &exit)
+		createTrade(t, e, authToken, accountID, "BUY", 1.1000, &exit, "2025-01-01")
 
 		// Create open trade (no exit)
-		createTrade(t, e, authToken, accountID, "SELL", 1.1100, nil)
+		createTrade(t, e, authToken, accountID, "SELL", 1.1100, nil, "2025-01-01")
 
 		// Call analytics endpoint
 		req := httptest.NewRequest(http.MethodGet, "/api/analytics", nil)
@@ -174,7 +174,7 @@ func TestE2E_Analytics_FiltersDepositsAndWithdrawals(t *testing.T) {
 	t.Run("filters out deposits and withdrawals from analytics", func(t *testing.T) {
 		// Create BUY trade
 		exit := 1.1100
-		createTrade(t, e, authToken, accountID, "BUY", 1.1000, &exit)
+		createTrade(t, e, authToken, accountID, "BUY", 1.1000, &exit, "2025-01-01")
 
 		// Create DEPOSIT (should be filtered)
 		createDeposit(t, e, authToken, accountID, 1000.0)
@@ -256,12 +256,12 @@ func TestE2E_Analytics_NoTrades(t *testing.T) {
 }
 
 // Helper functions
-func createTrade(t *testing.T, e *echo.Echo, token string, accountID int, tradeType string, entry float64, exit *float64) {
+func createTrade(t *testing.T, e *echo.Echo, token string, accountID int, tradeType string, entry float64, exit *float64, date string) {
 	t.Helper()
 
 	payload := map[string]any{
 		"account_id": accountID,
-		"date":       "2024-01-01",
+		"date":       date,
 		"time":       "10:00",
 		"pair":       "EUR/USD",
 		"type":       tradeType,

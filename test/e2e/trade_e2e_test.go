@@ -259,8 +259,8 @@ func TestE2E_Trade_FilterTradesByAccount(t *testing.T) {
 	accountID2 := createAccount(t, e, authToken, "Test Account 2")
 
 	// Create trade
-	createTrade(t, e, authToken, accountID, "BUY", 1.1000, nil)
-	createTrade(t, e, authToken, accountID2, "BUY", 1.2, nil)
+	createTrade(t, e, authToken, accountID, "BUY", 1.1000, nil, "2025-01-15")
+	createTrade(t, e, authToken, accountID2, "BUY", 1.2, nil, "2025-01-15")
 
 	t.Run("get trades by account 1", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/trades?account_id="+strconv.Itoa(accountID), nil)
@@ -321,6 +321,51 @@ func TestE2E_Trade_FilterTradesByAccount(t *testing.T) {
 		json.Unmarshal(rec.Body.Bytes(), &trades)
 		if len(trades) != 0 {
 			t.Fatalf("expected 0 trades, got %d", len(trades))
+		}
+	})
+
+}
+
+func TestE2E_Trade_FilterTradesByDate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test")
+	}
+
+	pg := testutil.SetupTestDatabase(t)
+	testutil.TruncateTables(t, pg.DB)
+
+	e := setupTestServer(t, pg.DB, pg.Queries)
+
+	// Create an account
+	authToken := registerUser(t, e, "trader@example.com", "password123")
+	accountID := createAccount(t, e, authToken, "Test Account")
+
+	// create trade between 2025-01-14 and 2025-01-16
+	createTrade(t, e, authToken, accountID, "BUY", 1.1000, nil, "2025-01-14")
+	createTrade(t, e, authToken, accountID, "BUY", 1.1000, nil, "2025-01-15")
+	createTrade(t, e, authToken, accountID, "BUY", 1.1000, nil, "2025-01-16")
+
+	t.Run("get trades by date", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/trades?start_date=2025-01-15&end_date=2025-01-16", nil)
+		req.Header.Set(echo.HeaderAuthorization, "Bearer "+authToken)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		var trades []map[string]any
+		json.Unmarshal(rec.Body.Bytes(), &trades)
+
+		if len(trades) != 2 {
+			t.Fatalf("expected 2 trades, got %d", len(trades))
+		}
+
+		for _, trade := range trades {
+			if trade["date"] != "2025-01-15" && trade["date"] != "2025-01-16" {
+				t.Fatalf("expected date 2025-01-15 or 2025-01-16, got %s", trade["date"])
+			}
 		}
 	})
 

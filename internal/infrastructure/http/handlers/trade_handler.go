@@ -39,6 +39,15 @@ func (h *TradeHandler) CreateTrade(c echo.Context) error {
 func (h *TradeHandler) GetTrades(c echo.Context) error {
 	userID := c.Get("user_id").(int64)
 
+	// Get date filter parameters
+	var startDate, endDate *string
+	if sd := c.QueryParam("start_date"); sd != "" {
+		startDate = &sd
+	}
+	if ed := c.QueryParam("end_date"); ed != "" {
+		endDate = &ed
+	}
+
 	// If account_id is provided, get trades by account ID
 	if accountID := c.QueryParam("account_id"); accountID != "" {
 		accountID, err := strconv.ParseInt(accountID, 10, 64)
@@ -47,7 +56,7 @@ func (h *TradeHandler) GetTrades(c echo.Context) error {
 				"error": "Invalid account ID",
 			})
 		}
-		trades, err := h.service.GetTradesByAccountID(c.Request().Context(), accountID, userID)
+		trades, err := h.service.GetTradesByAccountIDWithDateFilter(c.Request().Context(), accountID, userID, startDate, endDate)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": err.Error(),
@@ -57,7 +66,7 @@ func (h *TradeHandler) GetTrades(c echo.Context) error {
 	}
 
 	// Otherwise, get all trades for the user
-	trades, err := h.service.GetUserTrades(c.Request().Context(), userID)
+	trades, err := h.service.GetUserTradesWithDateFilter(c.Request().Context(), userID, startDate, endDate)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),

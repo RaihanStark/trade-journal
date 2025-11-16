@@ -299,6 +299,74 @@ func (q *Queries) GetTradesByAccountID(ctx context.Context, arg GetTradesByAccou
 	return items, nil
 }
 
+const getTradesByAccountIDAndDateRange = `-- name: GetTradesByAccountIDAndDateRange :many
+SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+FROM trades
+WHERE
+    account_id = $1
+    AND user_id = $2
+    AND date >= $3
+    AND date <= $4
+ORDER BY date DESC, time DESC
+`
+
+type GetTradesByAccountIDAndDateRangeParams struct {
+	AccountID sql.NullInt32 `json:"account_id"`
+	UserID    int32         `json:"user_id"`
+	Date      time.Time     `json:"date"`
+	Date_2    time.Time     `json:"date_2"`
+}
+
+func (q *Queries) GetTradesByAccountIDAndDateRange(ctx context.Context, arg GetTradesByAccountIDAndDateRangeParams) ([]Trade, error) {
+	rows, err := q.db.QueryContext(ctx, getTradesByAccountIDAndDateRange,
+		arg.AccountID,
+		arg.UserID,
+		arg.Date,
+		arg.Date_2,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Trade
+	for rows.Next() {
+		var i Trade
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.AccountID,
+			&i.Date,
+			&i.Time,
+			&i.Pair,
+			&i.Type,
+			&i.Entry,
+			&i.Exit,
+			&i.Lots,
+			&i.Pips,
+			&i.Pl,
+			&i.Rr,
+			&i.Status,
+			&i.StopLoss,
+			&i.TakeProfit,
+			&i.Notes,
+			&i.Mistakes,
+			&i.Amount,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTradesByUserID = `-- name: GetTradesByUserID :many
 SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
 FROM trades
@@ -309,6 +377,67 @@ ORDER BY date DESC, time DESC
 
 func (q *Queries) GetTradesByUserID(ctx context.Context, userID int32) ([]Trade, error) {
 	rows, err := q.db.QueryContext(ctx, getTradesByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Trade
+	for rows.Next() {
+		var i Trade
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.AccountID,
+			&i.Date,
+			&i.Time,
+			&i.Pair,
+			&i.Type,
+			&i.Entry,
+			&i.Exit,
+			&i.Lots,
+			&i.Pips,
+			&i.Pl,
+			&i.Rr,
+			&i.Status,
+			&i.StopLoss,
+			&i.TakeProfit,
+			&i.Notes,
+			&i.Mistakes,
+			&i.Amount,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTradesByUserIDAndDateRange = `-- name: GetTradesByUserIDAndDateRange :many
+SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+FROM trades
+WHERE
+    user_id = $1
+    AND date >= $2
+    AND date <= $3
+ORDER BY date DESC, time DESC
+`
+
+type GetTradesByUserIDAndDateRangeParams struct {
+	UserID int32     `json:"user_id"`
+	Date   time.Time `json:"date"`
+	Date_2 time.Time `json:"date_2"`
+}
+
+func (q *Queries) GetTradesByUserIDAndDateRange(ctx context.Context, arg GetTradesByUserIDAndDateRangeParams) ([]Trade, error) {
+	rows, err := q.db.QueryContext(ctx, getTradesByUserIDAndDateRange, arg.UserID, arg.Date, arg.Date_2)
 	if err != nil {
 		return nil, err
 	}

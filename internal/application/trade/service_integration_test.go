@@ -782,4 +782,289 @@ func TestTradeService_GetTradesByAccountID_Integration(t *testing.T) {
 			t.Fatalf("expected account ID %d, got %d", account.ID, *trades[0].AccountID)
 		}
 	})
+
+}
+
+func TestTradeService_DateFiltering_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	pg := testutil.SetupTestDatabase(t)
+	tradeRepo := persistence.NewTradeRepository(pg.Queries)
+	accountRepo := persistence.NewAccountRepository(pg.Queries)
+	userRepo := persistence.NewUserRepository(pg.Queries)
+
+	tradeService := NewService(tradeRepo, accountRepo)
+	accountService := accountApp.NewService(accountRepo)
+
+	ctx := context.Background()
+
+	t.Run("should filter trades by date range for user", func(t *testing.T) {
+		testutil.TruncateTables(t, pg.DB)
+
+		// Create user
+		testUser := user.NewUser("datefilter@example.com", "hashedpass")
+		createdUser, err := userRepo.Create(ctx, testUser)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Create account
+		accountReq := accountApp.CreateAccountRequest{
+			Name:          "Test Account",
+			Broker:        "Test Broker",
+			AccountNumber: "123",
+			AccountType:   "demo",
+			Currency:      "USD",
+			IsActive:      true,
+		}
+		account, err := accountService.CreateAccount(ctx, createdUser.ID, accountReq)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Create trades on different dates
+		date1 := "2025-01-14"
+		date2 := "2025-01-15"
+		date3 := "2025-01-16"
+		date4 := "2025-01-17"
+		tradeTime := "10:00"
+		exit1 := 1.1050
+		exit2 := 1.1950
+		exit3 := 110.50
+		exit4 := 0.6950
+
+		// Trade on 2025-01-14 (outside range)
+		_, err = tradeService.CreateTrade(ctx, createdUser.ID, CreateTradeRequest{
+			AccountID: &account.ID,
+			Date:      date1,
+			Time:      tradeTime,
+			Pair:      "EURUSD",
+			Type:      "BUY",
+			Entry:     1.1000,
+			Exit:      &exit1,
+			Lots:      0.1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Trade on 2025-01-15 (inside range)
+		_, err = tradeService.CreateTrade(ctx, createdUser.ID, CreateTradeRequest{
+			AccountID: &account.ID,
+			Date:      date2,
+			Time:      tradeTime,
+			Pair:      "GBPUSD",
+			Type:      "SELL",
+			Entry:     1.2000,
+			Exit:      &exit2,
+			Lots:      0.2,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Trade on 2025-01-16 (inside range)
+		_, err = tradeService.CreateTrade(ctx, createdUser.ID, CreateTradeRequest{
+			AccountID: &account.ID,
+			Date:      date3,
+			Time:      tradeTime,
+			Pair:      "USDJPY",
+			Type:      "BUY",
+			Entry:     110.00,
+			Exit:      &exit3,
+			Lots:      0.3,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Trade on 2025-01-17 (outside range)
+		_, err = tradeService.CreateTrade(ctx, createdUser.ID, CreateTradeRequest{
+			AccountID: &account.ID,
+			Date:      date4,
+			Time:      tradeTime,
+			Pair:      "AUDUSD",
+			Type:      "SELL",
+			Entry:     0.7000,
+			Exit:      &exit4,
+			Lots:      0.1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Test with date filter
+		startDate := "2025-01-15"
+		endDate := "2025-01-16"
+		trades, err := tradeService.GetUserTradesWithDateFilter(ctx, createdUser.ID, &startDate, &endDate)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		// Should only return 2 trades (dates 2025-01-15 and 2025-01-16)
+		if len(trades) != 2 {
+			t.Fatalf("expected 2 trades, got %d", len(trades))
+		}
+
+		// Verify the trades are from the correct dates
+		for _, trade := range trades {
+			if trade.Date != "2025-01-15" && trade.Date != "2025-01-16" {
+				t.Fatalf("expected trade date to be 2025-01-15 or 2025-01-16, got %s", trade.Date)
+			}
+		}
+
+		// Test without date filter (should return all 4 trades)
+		allTrades, err := tradeService.GetUserTradesWithDateFilter(ctx, createdUser.ID, nil, nil)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		if len(allTrades) != 4 {
+			t.Fatalf("expected 4 trades, got %d", len(allTrades))
+		}
+	})
+
+	t.Run("should filter trades by date range for account", func(t *testing.T) {
+		testutil.TruncateTables(t, pg.DB)
+
+		// Create user
+		testUser := user.NewUser("accountdatefilter@example.com", "hashedpass")
+		createdUser, err := userRepo.Create(ctx, testUser)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Create account 1
+		accountReq1 := accountApp.CreateAccountRequest{
+			Name:          "Test Account 1",
+			Broker:        "Test Broker",
+			AccountNumber: "123",
+			AccountType:   "demo",
+			Currency:      "USD",
+			IsActive:      true,
+		}
+		account1, err := accountService.CreateAccount(ctx, createdUser.ID, accountReq1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Create account 2
+		accountReq2 := accountApp.CreateAccountRequest{
+			Name:          "Test Account 2",
+			Broker:        "Test Broker 2",
+			AccountNumber: "456",
+			AccountType:   "live",
+			Currency:      "USD",
+			IsActive:      true,
+		}
+		account2, err := accountService.CreateAccount(ctx, createdUser.ID, accountReq2)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Create trades on different dates
+		date1 := "2025-01-14"
+		date2 := "2025-01-15"
+		date3 := "2025-01-16"
+		tradeTime := "10:00"
+		exit1 := 1.1050
+		exit2 := 1.1950
+		exit3 := 110.50
+		exit4 := 0.6950
+
+		// Trade on account 1, date 2025-01-14 (outside range)
+		_, err = tradeService.CreateTrade(ctx, createdUser.ID, CreateTradeRequest{
+			AccountID: &account1.ID,
+			Date:      date1,
+			Time:      tradeTime,
+			Pair:      "EURUSD",
+			Type:      "BUY",
+			Entry:     1.1000,
+			Exit:      &exit1,
+			Lots:      0.1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Trade on account 1, date 2025-01-15 (inside range)
+		_, err = tradeService.CreateTrade(ctx, createdUser.ID, CreateTradeRequest{
+			AccountID: &account1.ID,
+			Date:      date2,
+			Time:      tradeTime,
+			Pair:      "GBPUSD",
+			Type:      "SELL",
+			Entry:     1.2000,
+			Exit:      &exit2,
+			Lots:      0.2,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Trade on account 2, date 2025-01-15 (inside range but different account)
+		_, err = tradeService.CreateTrade(ctx, createdUser.ID, CreateTradeRequest{
+			AccountID: &account2.ID,
+			Date:      date2,
+			Time:      tradeTime,
+			Pair:      "USDJPY",
+			Type:      "BUY",
+			Entry:     110.00,
+			Exit:      &exit3,
+			Lots:      0.3,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Trade on account 1, date 2025-01-16 (inside range)
+		_, err = tradeService.CreateTrade(ctx, createdUser.ID, CreateTradeRequest{
+			AccountID: &account1.ID,
+			Date:      date3,
+			Time:      tradeTime,
+			Pair:      "AUDUSD",
+			Type:      "SELL",
+			Entry:     0.7000,
+			Exit:      &exit4,
+			Lots:      0.1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Test with date filter for account 1
+		startDate := "2025-01-15"
+		endDate := "2025-01-16"
+		trades, err := tradeService.GetTradesByAccountIDWithDateFilter(ctx, account1.ID, createdUser.ID, &startDate, &endDate)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		// Should only return 2 trades from account 1 (dates 2025-01-15 and 2025-01-16)
+		if len(trades) != 2 {
+			t.Fatalf("expected 2 trades, got %d", len(trades))
+		}
+
+		// Verify all trades are from account 1
+		for _, trade := range trades {
+			if trade.AccountID == nil || *trade.AccountID != account1.ID {
+				t.Fatalf("expected trade to be from account %d", account1.ID)
+			}
+			if trade.Date != "2025-01-15" && trade.Date != "2025-01-16" {
+				t.Fatalf("expected trade date to be 2025-01-15 or 2025-01-16, got %s", trade.Date)
+			}
+		}
+
+		// Test without date filter (should return all 3 trades from account 1)
+		allTrades, err := tradeService.GetTradesByAccountIDWithDateFilter(ctx, account1.ID, createdUser.ID, nil, nil)
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		if len(allTrades) != 3 {
+			t.Fatalf("expected 3 trades, got %d", len(allTrades))
+		}
+	})
 }

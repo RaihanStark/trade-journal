@@ -104,3 +104,22 @@ WHERE
     account_id = $1
     AND user_id = $2
 ORDER BY date DESC, time DESC;
+
+-- name: GetTradesByUserIDAndDateRange :many
+SELECT *
+FROM trades
+WHERE
+    user_id = $1
+    AND date >= $2
+    AND date <= $3
+ORDER BY date DESC, time DESC;
+
+-- name: GetTradesByAccountIDAndDateRange :many
+SELECT *
+FROM trades
+WHERE
+    account_id = $1
+    AND user_id = $2
+    AND date >= $3
+    AND date <= $4
+ORDER BY date DESC, time DESC;

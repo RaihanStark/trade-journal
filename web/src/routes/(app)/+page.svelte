@@ -37,8 +37,10 @@
 		await accountsStore.reload();
 
 		const accountId = selectedAccount === 'all' ? undefined : Number(selectedAccount);
+		const start = startDate || undefined;
+		const end = endDate || undefined;
 
-		const tradesPromise = apiClient.getTrades(authStore.token, accountId).then(({ data: tradesData, error }) => {
+		const tradesPromise = apiClient.getTrades(authStore.token, accountId, start, end).then(({ data: tradesData, error }) => {
 			if (error) {
 				console.error('Failed to load trades:', error);
 				return [];
@@ -62,6 +64,10 @@
 	}
 
 	function handleAccountFilterChange() {
+		reloadData();
+	}
+
+	function handleDateFilterChange() {
 		reloadData();
 	}
 
@@ -93,6 +99,7 @@
 		selectedAccount = 'all';
 		startDate = '';
 		endDate = '';
+		reloadData();
 	}
 
 	function openDeleteConfirm(id: number) {
@@ -164,6 +171,7 @@
 					id="start-date"
 					type="date"
 					bind:value={startDate}
+					onchange={handleDateFilterChange}
 					class="border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300 focus:border-slate-600 focus:outline-none"
 				/>
 			</div>
@@ -174,6 +182,7 @@
 					id="end-date"
 					type="date"
 					bind:value={endDate}
+					onchange={handleDateFilterChange}
 					class="border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300 focus:border-slate-600 focus:outline-none"
 				/>
 			</div>
