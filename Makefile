@@ -1,4 +1,4 @@
-.PHONY: help run build migrate-up migrate-down migrate-create sqlc-generate dev docker-up docker-down docker-logs test test-verbose test-coverage test-race clean
+.PHONY: help run build migrate-up migrate-down migrate-create sqlc-generate dev docker-up docker-down docker-logs test test-verbose test-coverage test-race clean seed
 
 help:
 	@echo "Available commands:"
@@ -17,6 +17,7 @@ help:
 	@echo "  make migrate-down   - Rollback database migrations"
 	@echo "  make migrate-create - Create a new migration (usage: make migrate-create name=migration_name)"
 	@echo "  make sqlc-generate  - Generate sqlc code"
+	@echo "  make seed           - Seed the database"
 
 run:
 	go run cmd/api/main.go
@@ -76,3 +77,6 @@ clean:
 	rm -f coverage.out coverage.html
 	go clean -testcache
 	@echo "Clean complete"
+
+seed:
+	go run cmd/seed/main.go
