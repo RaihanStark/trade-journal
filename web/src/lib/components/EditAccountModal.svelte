@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
+	import { z } from 'zod';
 
 	interface Account {
 		id: number;
@@ -25,6 +26,16 @@
 	let accountNumber = $state('');
 	let accountType = $state<'demo' | 'live'>('demo');
 	let currency = $state('USD');
+	let errors = $state<Record<string, string>>({});
+
+	// Zod validation schema
+	const accountSchema = z.object({
+		name: z.string().min(1, 'Account name is required'),
+		broker: z.string().min(1, 'Broker is required'),
+		accountNumber: z.string().min(1, 'Account number is required'),
+		accountType: z.enum(['demo', 'live'], { errorMap: () => ({ message: 'Account type must be demo or live' }) }),
+		currency: z.string().min(1, 'Currency is required')
+	});
 
 	// Update form when account prop changes
 	$effect(() => {
@@ -34,11 +45,34 @@
 			accountNumber = account.accountNumber;
 			accountType = account.accountType;
 			currency = account.currency;
+			errors = {};
 		}
 	});
 
 	function handleSubmit(e: Event) {
 		e.preventDefault();
+
+		// Clear previous errors
+		errors = {};
+
+		// Validate form data
+		const result = accountSchema.safeParse({
+			name,
+			broker,
+			accountNumber,
+			accountType,
+			currency
+		});
+
+		if (!result.success) {
+			// Map Zod errors to field errors
+			result.error.issues.forEach((err) => {
+				if (err.path[0]) {
+					errors[err.path[0] as string] = err.message;
+				}
+			});
+			return;
+		}
 
 		if (account) {
 			onSubmit({
@@ -51,11 +85,34 @@
 			});
 		}
 	}
+
+	function validateField(field: string, value: any) {
+		// Validate single field
+		try {
+			const fieldSchema = accountSchema.shape[field as keyof typeof accountSchema.shape];
+			if (fieldSchema) {
+				fieldSchema.parse(value);
+				// Clear error if validation passes
+				const { [field]: _, ...rest } = errors;
+				errors = rest;
+			}
+		} catch (err) {
+			if (err instanceof z.ZodError) {
+				errors[field] = err.issues[0]?.message || 'Invalid value';
+			}
+		}
+	}
 </script>
 
 <Modal {isOpen} title="Edit Trading Account" size="md" {onClose}>
 	{#snippet children()}
 		<form onsubmit={handleSubmit} id="edit-account-form" class="space-y-6">
+			{#if errors.submit}
+				<div class="rounded border border-red-800 bg-red-900/20 px-4 py-3 text-sm text-red-400">
+					{errors.submit}
+				</div>
+			{/if}
+
 			<div class="grid gap-6 md:grid-cols-2">
 				<!-- Account Name -->
 				<div>
@@ -66,10 +123,15 @@
 						type="text"
 						id="edit-name"
 						bind:value={name}
-						required
-						class="w-full border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+						onblur={() => validateField('name', name)}
+						class="w-full border bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:outline-none {errors.name
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 focus:border-emerald-500'}"
 						placeholder="e.g., Main Demo Account"
 					/>
+					{#if errors.name}
+						<p class="mt-1 text-xs text-red-400">{errors.name}</p>
+					{/if}
 				</div>
 
 				<!-- Broker -->
@@ -81,10 +143,15 @@
 						type="text"
 						id="edit-broker"
 						bind:value={broker}
-						required
-						class="w-full border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+						onblur={() => validateField('broker', broker)}
+						class="w-full border bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:outline-none {errors.broker
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 focus:border-emerald-500'}"
 						placeholder="e.g., OANDA, IC Markets"
 					/>
+					{#if errors.broker}
+						<p class="mt-1 text-xs text-red-400">{errors.broker}</p>
+					{/if}
 				</div>
 
 				<!-- Account Number -->
@@ -99,10 +166,15 @@
 						type="text"
 						id="edit-accountNumber"
 						bind:value={accountNumber}
-						required
-						class="w-full border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+						onblur={() => validateField('accountNumber', accountNumber)}
+						class="w-full border bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:outline-none {errors.accountNumber
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 focus:border-emerald-500'}"
 						placeholder="e.g., 12345678"
 					/>
+					{#if errors.accountNumber}
+						<p class="mt-1 text-xs text-red-400">{errors.accountNumber}</p>
+					{/if}
 				</div>
 
 				<!-- Account Type -->

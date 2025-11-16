@@ -1,25 +1,47 @@
 <script lang="ts">
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { z } from 'zod';
 
 	let email = $state('');
 	let password = $state('');
 	let confirmPassword = $state('');
 	let error = $state('');
 	let isLoading = $state(false);
+	let errors = $state<Record<string, string>>({});
+
+	// Zod validation schema
+	const registerSchema = z.object({
+		email: z.string()
+			.min(1, 'Email is required')
+			.email('Please enter a valid email address'),
+		password: z.string()
+			.min(8, 'Password must be at least 8 characters'),
+		confirmPassword: z.string()
+			.min(1, 'Please confirm your password')
+	}).refine((data) => data.password === data.confirmPassword, {
+		message: "Passwords do not match",
+		path: ["confirmPassword"],
+	});
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		error = '';
+		errors = {};
 
-		// Validate passwords match
-		if (password !== confirmPassword) {
-			error = 'Passwords do not match';
-			return;
-		}
+		// Validate form data
+		const result = registerSchema.safeParse({
+			email,
+			password,
+			confirmPassword
+		});
 
-		// Validate password length
-		if (password.length < 8) {
-			error = 'Password must be at least 8 characters';
+		if (!result.success) {
+			// Map Zod errors to field errors
+			result.error.issues.forEach((err) => {
+				if (err.path[0]) {
+					errors[err.path[0] as string] = err.message;
+				}
+			});
 			return;
 		}
 
@@ -34,6 +56,33 @@
 			error = 'An unexpected error occurred';
 		} finally {
 			isLoading = false;
+		}
+	}
+
+	function validateField(field: string, value: any) {
+		// Validate single field
+		try {
+			// For confirmPassword, we need to validate the whole object
+			if (field === 'confirmPassword') {
+				registerSchema.parse({ email, password, confirmPassword });
+				const { confirmPassword: _, ...rest } = errors;
+				errors = rest;
+			} else {
+				const fieldSchema = registerSchema.shape[field as keyof typeof registerSchema.shape];
+				if (fieldSchema) {
+					fieldSchema.parse(value);
+					// Clear error if validation passes
+					const { [field]: _, ...rest } = errors;
+					errors = rest;
+				}
+			}
+		} catch (err) {
+			if (err instanceof z.ZodError) {
+				const fieldError = err.issues.find(issue => issue.path.includes(field));
+				if (fieldError) {
+					errors[field] = fieldError.message;
+				}
+			}
 		}
 	}
 </script>
@@ -69,10 +118,15 @@
 						type="email"
 						id="email"
 						bind:value={email}
-						required
-						class="w-full border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+						onblur={() => validateField('email', email)}
+						class="w-full border bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:outline-none {errors.email
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 focus:border-emerald-500'}"
 						placeholder="your@email.com"
 					/>
+					{#if errors.email}
+						<p class="mt-1 text-xs text-red-400">{errors.email}</p>
+					{/if}
 				</div>
 
 				<!-- Password Field -->
@@ -84,11 +138,15 @@
 						type="password"
 						id="password"
 						bind:value={password}
-						required
-						minlength="8"
-						class="w-full border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+						onblur={() => validateField('password', password)}
+						class="w-full border bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:outline-none {errors.password
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 focus:border-emerald-500'}"
 						placeholder="Minimum 8 characters"
 					/>
+					{#if errors.password}
+						<p class="mt-1 text-xs text-red-400">{errors.password}</p>
+					{/if}
 				</div>
 
 				<!-- Confirm Password Field -->
@@ -100,11 +158,15 @@
 						type="password"
 						id="confirm-password"
 						bind:value={confirmPassword}
-						required
-						minlength="8"
-						class="w-full border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+						onblur={() => validateField('confirmPassword', confirmPassword)}
+						class="w-full border bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:outline-none {errors.confirmPassword
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 focus:border-emerald-500'}"
 						placeholder="Re-enter your password"
 					/>
+					{#if errors.confirmPassword}
+						<p class="mt-1 text-xs text-red-400">{errors.confirmPassword}</p>
+					{/if}
 				</div>
 
 				<!-- Submit Button -->

@@ -5,6 +5,7 @@
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { accountsStore } from '$lib/stores/accounts.svelte';
 	import { strategiesStore } from '$lib/stores/strategies.svelte';
+	import { z } from 'zod';
 
 	interface Props {
 		isOpen: boolean;
@@ -19,17 +20,65 @@
 	let time = $state(new Date().toTimeString().split(' ')[0].substring(0, 5));
 	let pair = $state('EUR/USD');
 	let type = $state<'BUY' | 'SELL'>('BUY');
-	let entry = $state('');
-	let exit = $state('');
-	let lots = $state('');
-	let stopLoss = $state('');
-	let takeProfit = $state('');
+	let entry = $state(0);
+	let exit = $state(0);
+	let lots = $state(0);
+	let stopLoss = $state(0);
+	let takeProfit = $state(0);
 	let selectedStrategyNames = $state<string[]>([]);
 	let notes = $state('');
 	let isSubmitting = $state(false);
+	let errors = $state<Record<string, string>>({});
+
+	// Zod validation schema
+	const tradeSchema = z.object({
+		accountId: z.string()
+			.min(1, 'Please select an account')
+			.refine((val) => !isNaN(parseInt(val)), 'Please select an account'),
+		date: z.string().min(1, 'Date is required'),
+		time: z.string().min(1, 'Time is required'),
+		pair: z.string().min(1, 'Currency pair is required'),
+		type: z.enum(['BUY', 'SELL'], { errorMap: () => ({ message: 'Type must be BUY or SELL' }) }),
+		entry: z.number()
+			.refine((val) => val > 0, 'Entry price must be greater than 0'),
+		exit: z.number().optional(),
+		lots: z.number()
+			.refine((val) => val > 0, 'Lot size must be greater than 0'),
+		stopLoss: z.number().optional(),
+		takeProfit: z.number().optional(),
+		notes: z.string().optional()
+	});
 
 	async function handleSubmit() {
 		if (!authStore.token || isSubmitting) return;
+
+		// Clear previous errors
+		errors = {};
+
+		// Validate form data
+		const result = tradeSchema.safeParse({
+			accountId,
+			date,
+			time,
+			pair,
+			type,
+			entry,
+			exit: exit || undefined,
+			lots,
+			stopLoss: stopLoss || undefined,
+			takeProfit: takeProfit || undefined,
+			notes
+		});
+
+		if (!result.success) {
+			// Map Zod errors to field errors
+			result.error.issues.forEach((err) => {
+				if (err.path[0]) {
+					errors[err.path[0] as string] = err.message;
+				}
+			});
+			return;
+		}
 
 		isSubmitting = true;
 
@@ -56,11 +105,11 @@
 			time,
 			pair,
 			type,
-			entry: parseFloat(entry),
-			exit: exit ? parseFloat(exit) : null,
-			lots: parseFloat(lots),
-			stop_loss: stopLoss ? parseFloat(stopLoss) : null,
-			take_profit: takeProfit ? parseFloat(takeProfit) : null,
+			entry,
+			exit: exit || null,
+			lots,
+			stop_loss: stopLoss || null,
+			take_profit: takeProfit || null,
 			notes,
 			mistakes: '',
 			amount: null,
@@ -71,6 +120,7 @@
 
 		if (error) {
 			console.error('Failed to create trade:', error);
+			errors.submit = error;
 			return;
 		}
 
@@ -81,19 +131,37 @@
 		}
 	}
 
+	function validateField(field: string, value: any) {
+		// Validate single field
+		try {
+			const fieldSchema = tradeSchema.shape[field as keyof typeof tradeSchema.shape];
+			if (fieldSchema) {
+				fieldSchema.parse(value);
+				// Clear error if validation passes
+				const { [field]: _, ...rest } = errors;
+				errors = rest;
+			}
+		} catch (err) {
+			if (err instanceof z.ZodError) {
+				errors[field] = err.issues[0]?.message || 'Invalid value';
+			}
+		}
+	}
+
 	function resetForm() {
 		accountId = '';
 		date = new Date().toISOString().split('T')[0];
 		time = new Date().toTimeString().split(' ')[0].substring(0, 5);
 		pair = 'EUR/USD';
 		type = 'BUY';
-		entry = '';
-		exit = '';
-		lots = '';
-		stopLoss = '';
-		takeProfit = '';
+		entry = 0;
+		exit = 0;
+		lots = 0;
+		stopLoss = 0;
+		takeProfit = 0;
 		selectedStrategyNames = [];
 		notes = '';
+		errors = {};
 	}
 
 	const pairs = [
@@ -120,6 +188,12 @@
 <Modal {isOpen} title="Add New Trade" size="lg" {onClose}>
 	{#snippet children()}
 		<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
+			{#if errors.submit}
+				<div class="rounded border border-red-800 bg-red-900/20 px-4 py-3 text-sm text-red-400">
+					{errors.submit}
+				</div>
+			{/if}
+
 			<!-- Account Selection -->
 			<div>
 				<label for="account" class="block text-sm font-medium text-slate-300">
@@ -128,14 +202,19 @@
 				<select
 					id="account"
 					bind:value={accountId}
-					required
-					class="mt-1 w-full border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none"
+					onblur={() => validateField('accountId', accountId)}
+					class="mt-1 w-full border px-3 py-2 text-sm text-slate-100 focus:outline-none {errors.accountId
+						? 'border-red-500 bg-red-900/10 focus:border-red-500'
+						: 'border-slate-700 bg-slate-800 focus:border-emerald-500'}"
 				>
 					<option value="">Select account</option>
 					{#each accountsStore.accounts as account}
-						<option value={account.id}>{account.name} - {account.broker}</option>
+						<option value={account.id.toString()}>{account.name} - {account.broker}</option>
 					{/each}
 				</select>
+				{#if errors.accountId}
+					<p class="mt-1 text-xs text-red-400">{errors.accountId}</p>
+				{/if}
 			</div>
 
 			<div class="grid grid-cols-2 gap-4">
@@ -148,9 +227,14 @@
 						id="date"
 						type="date"
 						bind:value={date}
-						required
-						class="mt-1 w-full border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none"
+						onblur={() => validateField('date', date)}
+						class="mt-1 w-full border px-3 py-2 text-sm text-slate-100 focus:outline-none {errors.date
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 bg-slate-800 focus:border-emerald-500'}"
 					/>
+					{#if errors.date}
+						<p class="mt-1 text-xs text-red-400">{errors.date}</p>
+					{/if}
 				</div>
 
 				<div>
@@ -161,9 +245,14 @@
 						id="time"
 						type="time"
 						bind:value={time}
-						required
-						class="mt-1 w-full border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none"
+						onblur={() => validateField('time', time)}
+						class="mt-1 w-full border px-3 py-2 text-sm text-slate-100 focus:outline-none {errors.time
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 bg-slate-800 focus:border-emerald-500'}"
 					/>
+					{#if errors.time}
+						<p class="mt-1 text-xs text-red-400">{errors.time}</p>
+					{/if}
 				</div>
 
 				<!-- Pair & Type -->
@@ -208,10 +297,15 @@
 						type="number"
 						step="0.00001"
 						bind:value={entry}
-						required
+						onblur={() => validateField('entry', entry)}
 						placeholder="0.00000"
-						class="mt-1 w-full border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+						class="mt-1 w-full border px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none {errors.entry
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 bg-slate-800 focus:border-emerald-500'}"
 					/>
+					{#if errors.entry}
+						<p class="mt-1 text-xs text-red-400">{errors.entry}</p>
+					{/if}
 				</div>
 
 				<div>
@@ -238,10 +332,15 @@
 						type="number"
 						step="0.01"
 						bind:value={lots}
-						required
+						onblur={() => validateField('lots', lots)}
 						placeholder="0.00"
-						class="mt-1 w-full border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+						class="mt-1 w-full border px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none {errors.lots
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 bg-slate-800 focus:border-emerald-500'}"
 					/>
+					{#if errors.lots}
+						<p class="mt-1 text-xs text-red-400">{errors.lots}</p>
+					{/if}
 				</div>
 			</div>
 

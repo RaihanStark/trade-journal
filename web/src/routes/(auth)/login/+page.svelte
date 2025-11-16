@@ -1,14 +1,42 @@
 <script lang="ts">
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { z } from 'zod';
 
 	let email = $state('');
 	let password = $state('');
 	let error = $state('');
 	let isLoading = $state(false);
+	let errors = $state<Record<string, string>>({});
+
+	// Zod validation schema
+	const loginSchema = z.object({
+		email: z.string()
+			.min(1, 'Email is required')
+			.email('Please enter a valid email address'),
+		password: z.string().min(1, 'Password is required')
+	});
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		error = '';
+		errors = {};
+
+		// Validate form data
+		const result = loginSchema.safeParse({
+			email,
+			password
+		});
+
+		if (!result.success) {
+			// Map Zod errors to field errors
+			result.error.issues.forEach((err) => {
+				if (err.path[0]) {
+					errors[err.path[0] as string] = err.message;
+				}
+			});
+			return;
+		}
+
 		isLoading = true;
 
 		try {
@@ -20,6 +48,23 @@
 			error = 'An unexpected error occurred';
 		} finally {
 			isLoading = false;
+		}
+	}
+
+	function validateField(field: string, value: any) {
+		// Validate single field
+		try {
+			const fieldSchema = loginSchema.shape[field as keyof typeof loginSchema.shape];
+			if (fieldSchema) {
+				fieldSchema.parse(value);
+				// Clear error if validation passes
+				const { [field]: _, ...rest } = errors;
+				errors = rest;
+			}
+		} catch (err) {
+			if (err instanceof z.ZodError) {
+				errors[field] = err.issues[0]?.message || 'Invalid value';
+			}
 		}
 	}
 </script>
@@ -55,10 +100,15 @@
 						type="email"
 						id="email"
 						bind:value={email}
-						required
-						class="w-full border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+						onblur={() => validateField('email', email)}
+						class="w-full border bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:outline-none {errors.email
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 focus:border-emerald-500'}"
 						placeholder="your@email.com"
 					/>
+					{#if errors.email}
+						<p class="mt-1 text-xs text-red-400">{errors.email}</p>
+					{/if}
 				</div>
 
 				<!-- Password Field -->
@@ -70,10 +120,15 @@
 						type="password"
 						id="password"
 						bind:value={password}
-						required
-						class="w-full border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none"
+						onblur={() => validateField('password', password)}
+						class="w-full border bg-slate-950 px-4 py-3 text-sm text-slate-100 transition-colors placeholder:text-slate-600 focus:outline-none {errors.password
+							? 'border-red-500 bg-red-900/10 focus:border-red-500'
+							: 'border-slate-700 focus:border-emerald-500'}"
 						placeholder="Enter your password"
 					/>
+					{#if errors.password}
+						<p class="mt-1 text-xs text-red-400">{errors.password}</p>
+					{/if}
 				</div>
 
 				<!-- Submit Button -->
