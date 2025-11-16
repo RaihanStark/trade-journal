@@ -36,7 +36,9 @@
 
 		await accountsStore.reload();
 
-		const tradesPromise = apiClient.getTrades(authStore.token).then(({ data: tradesData, error }) => {
+		const accountId = selectedAccount === 'all' ? undefined : Number(selectedAccount);
+
+		const tradesPromise = apiClient.getTrades(authStore.token, accountId).then(({ data: tradesData, error }) => {
 			if (error) {
 				console.error('Failed to load trades:', error);
 				return [];
@@ -57,6 +59,10 @@
 			trades: tradesPromise,
 			analytics: analyticsPromise
 		};
+	}
+
+	function handleAccountFilterChange() {
+		reloadData();
 	}
 
 	function openModal() {
@@ -142,6 +148,7 @@
 				<select
 					id="account-filter"
 					bind:value={selectedAccount}
+					onchange={handleAccountFilterChange}
 					class="border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-300 focus:border-slate-600 focus:outline-none"
 				>
 					<option value="all">All Accounts</option>

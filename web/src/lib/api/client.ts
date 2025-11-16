@@ -322,8 +322,9 @@ class ApiClient {
 	}
 
 	// Trade APIs
-	async getTrades(token: string): Promise<{ data?: Trade[]; error?: string }> {
-		return this.request<Trade[]>('/api/trades', {
+	async getTrades(token: string, accountId?: number): Promise<{ data?: Trade[]; error?: string }> {
+		const url = accountId ? `/api/trades?account_id=${accountId}` : '/api/trades';
+		return this.request<Trade[]>(url, {
 			method: 'GET',
 			headers: {
 				Authorization: `Bearer ${token}`
