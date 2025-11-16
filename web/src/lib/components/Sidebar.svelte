@@ -2,13 +2,14 @@
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { LayoutDashboard, Wallet, Target, LogOut } from 'lucide-svelte';
 
 	let currentPath = $derived($page.url.pathname);
 
 	const menuItems = [
-		{ id: 'dashboard', label: 'Dashboard', path: '/', icon: '▪' },
-		{ id: 'accounts', label: 'Accounts', path: '/accounts', icon: '▪' },
-		{ id: 'strategies', label: 'Strategies', path: '/strategies', icon: '▪' },
+		{ id: 'dashboard', label: 'Dashboard', path: '/', icon: LayoutDashboard },
+		{ id: 'accounts', label: 'Accounts', path: '/accounts', icon: Wallet },
+		{ id: 'strategies', label: 'Strategies', path: '/strategies', icon: Target },
 	];
 
 	function handleNavigation(path: string) {
@@ -40,7 +41,11 @@
 					? 'bg-slate-800 text-slate-100'
 					: 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'}"
 			>
-				<span class="text-base {currentPath === item.path ? 'text-emerald-400' : 'text-slate-600 group-hover:text-slate-500'}">{item.icon}</span>
+				<svelte:component
+					this={item.icon}
+					size={16}
+					class={currentPath === item.path ? 'text-emerald-400' : 'text-slate-600 group-hover:text-slate-500'}
+				/>
 				<span class="text-xs font-medium">{item.label}</span>
 			</button>
 		{/each}
@@ -61,9 +66,10 @@
 		</div>
 		<button
 			onclick={handleLogout}
-			class="w-full border border-slate-700 px-2 py-1.5 text-[10px] font-medium uppercase text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-300"
+			class="flex w-full items-center justify-center gap-2 border border-slate-700 px-2 py-1.5 text-[10px] font-medium uppercase text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-300"
 		>
-			Logout
+			<LogOut size={12} />
+			<span>Logout</span>
 		</button>
 	</div>
 </aside>
