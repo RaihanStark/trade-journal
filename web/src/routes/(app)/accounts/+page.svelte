@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import AddAccountModal from '$lib/components/AddAccountModal.svelte';
 	import EditAccountModal from '$lib/components/EditAccountModal.svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
-	import { apiClient } from '$lib/api/client';
+	import { apiClient, type Account as APIAccount } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { accountsStore } from '$lib/stores/accounts.svelte';
+	import { onMount } from 'svelte';
 
 	interface Account {
 		id: number;
@@ -21,38 +22,26 @@
 	let isConfirmOpen = $state(false);
 	let accountToDelete = $state<number | null>(null);
 	let accountToEdit = $state<Account | null>(null);
-	let isLoading = $state(true);
-
-	let accounts = $state<Account[]>([]);
 
 	onMount(async () => {
-		await loadAccounts();
+		await accountsStore.load();
 	});
 
-	async function loadAccounts() {
-		if (!authStore.token) return;
-
-		isLoading = true;
-		const { data, error } = await apiClient.getAccounts(authStore.token);
-		isLoading = false;
-
-		if (error) {
-			console.error('Failed to load accounts:', error);
-			return;
-		}
-
-		if (data) {
-			accounts = data.map((acc) => ({
-				id: acc.id,
-				name: acc.name,
-				broker: acc.broker,
-				accountNumber: acc.account_number,
-				accountType: acc.account_type,
-				currency: acc.currency,
-				isActive: acc.is_active
-			}));
-		}
+	// Convert API Account to local Account format
+	function toLocalAccount(acc: APIAccount): Account {
+		return {
+			id: acc.id,
+			name: acc.name,
+			broker: acc.broker,
+			accountNumber: acc.account_number,
+			accountType: acc.account_type,
+			currency: acc.currency,
+			isActive: acc.is_active
+		};
 	}
+
+	// Derived local accounts from store
+	let accounts = $derived(accountsStore.accounts.map(toLocalAccount));
 
 	function openAddModal() {
 		isAddModalOpen = true;
@@ -93,18 +82,7 @@
 		}
 
 		if (data) {
-			accounts = [
-				...accounts,
-				{
-					id: data.id,
-					name: data.name,
-					broker: data.broker,
-					accountNumber: data.account_number,
-					accountType: data.account_type,
-					currency: data.currency,
-					isActive: data.is_active
-				}
-			];
+			await accountsStore.add(data);
 		}
 
 		closeAddModal();
@@ -132,19 +110,7 @@
 		}
 
 		if (data) {
-			accounts = accounts.map((acc) =>
-				acc.id === data.id
-					? {
-							id: data.id,
-							name: data.name,
-							broker: data.broker,
-							accountNumber: data.account_number,
-							accountType: data.account_type,
-							currency: data.currency,
-							isActive: data.is_active
-						}
-					: acc
-			);
+			await accountsStore.update(data);
 		}
 
 		closeEditModal();
@@ -175,9 +141,7 @@
 		}
 
 		if (data) {
-			accounts = accounts.map((acc) =>
-				acc.id === id ? { ...acc, isActive: data.is_active } : acc
-			);
+			await accountsStore.update(data);
 		}
 	}
 
@@ -196,7 +160,7 @@
 			return;
 		}
 
-		accounts = accounts.filter((acc) => acc.id !== accountToDelete);
+		await accountsStore.remove(accountToDelete);
 		accountToDelete = null;
 		isConfirmOpen = false;
 	}
@@ -226,7 +190,7 @@
 
 	<!-- Accounts Table -->
 	<div class="flex-1 overflow-auto">
-		{#if isLoading}
+		{#if accountsStore.isLoading}
 			<div class="flex h-64 items-center justify-center">
 				<div class="text-center">
 					<p class="text-slate-500">Loading accounts...</p>

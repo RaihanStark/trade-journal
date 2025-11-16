@@ -60,6 +60,16 @@ class StrategiesStore {
 		this.state.strategies = [...this.state.strategies, strategy];
 	}
 
+	async update(updatedStrategy: Strategy) {
+		this.state.strategies = this.state.strategies.map((s) =>
+			s.id === updatedStrategy.id ? updatedStrategy : s
+		);
+	}
+
+	async remove(id: number) {
+		this.state.strategies = this.state.strategies.filter((s) => s.id !== id);
+	}
+
 	clear() {
 		this.state.strategies = [];
 		this.state.error = null;

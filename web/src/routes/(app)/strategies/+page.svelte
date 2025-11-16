@@ -1,42 +1,24 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import { apiClient } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth.svelte';
+	import { strategiesStore } from '$lib/stores/strategies.svelte';
 	import type { Strategy } from '$lib/api/client';
+	import { onMount } from 'svelte';
 
-	let strategies = $state<Strategy[]>([]);
-	let isLoading = $state(true);
 	let isAddMode = $state(false);
 	let editingId = $state<number | null>(null);
 	let isConfirmOpen = $state(false);
 	let strategyToDelete = $state<number | null>(null);
 
+	onMount(async () => {
+		await strategiesStore.load();
+	});
+
 	let formData = $state({
 		name: '',
 		description: ''
 	});
-
-	onMount(async () => {
-		await loadStrategies();
-	});
-
-	async function loadStrategies() {
-		if (!authStore.token) return;
-
-		isLoading = true;
-		const { data, error } = await apiClient.getStrategies(authStore.token);
-		isLoading = false;
-
-		if (error) {
-			console.error('Failed to load strategies:', error);
-			return;
-		}
-
-		if (data) {
-			strategies = data;
-		}
-	}
 
 	function startAdd() {
 		isAddMode = true;
@@ -65,7 +47,7 @@
 		}
 
 		if (data) {
-			strategies = [...strategies, data];
+			await strategiesStore.add(data);
 		}
 
 		cancelAdd();
@@ -99,7 +81,7 @@
 		}
 
 		if (data) {
-			strategies = strategies.map((s) => (s.id === data.id ? data : s));
+			await strategiesStore.update(data);
 		}
 
 		cancelEdit();
@@ -120,7 +102,7 @@
 			return;
 		}
 
-		strategies = strategies.filter((s) => s.id !== strategyToDelete);
+		await strategiesStore.remove(strategyToDelete);
 		strategyToDelete = null;
 		isConfirmOpen = false;
 	}
@@ -152,13 +134,13 @@
 
 	<!-- Strategies Table -->
 	<div class="flex-1 overflow-auto">
-		{#if isLoading}
+		{#if strategiesStore.isLoading}
 			<div class="flex h-64 items-center justify-center">
 				<div class="text-center">
 					<p class="text-slate-500">Loading strategies...</p>
 				</div>
 			</div>
-		{:else if strategies.length === 0 && !isAddMode}
+		{:else if strategiesStore.strategies.length === 0 && !isAddMode}
 			<div class="flex h-64 items-center justify-center">
 				<div class="text-center">
 					<svg
@@ -235,7 +217,7 @@
 				{/if}
 
 				<!-- Strategy Rows -->
-				{#each strategies as strategy}
+				{#each strategiesStore.strategies as strategy}
 					<tr class="transition-colors hover:bg-slate-900/50">
 						<td class="px-6 py-4">
 							{#if editingId === strategy.id}

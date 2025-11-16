@@ -56,6 +56,20 @@ class AccountsStore {
 		return this.load(true);
 	}
 
+	async add(account: Account) {
+		this.state.accounts = [...this.state.accounts, account];
+	}
+
+	async update(updatedAccount: Account) {
+		this.state.accounts = this.state.accounts.map((a) =>
+			a.id === updatedAccount.id ? updatedAccount : a
+		);
+	}
+
+	async remove(id: number) {
+		this.state.accounts = this.state.accounts.filter((a) => a.id !== id);
+	}
+
 	clear() {
 		this.state.accounts = [];
 		this.state.error = null;
