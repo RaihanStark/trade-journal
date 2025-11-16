@@ -5,6 +5,7 @@
 	import AddTradeModal from '$lib/components/AddTradeModal.svelte';
 	import DepositModal from '$lib/components/DepositModal.svelte';
 	import WithdrawModal from '$lib/components/WithdrawModal.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import { apiClient, type Trade } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { accountsStore } from '$lib/stores/accounts.svelte';
@@ -20,6 +21,8 @@
 	let isModalOpen = $state(false);
 	let isDepositModalOpen = $state(false);
 	let isWithdrawModalOpen = $state(false);
+	let isDeleteConfirmOpen = $state(false);
+	let tradeToDelete = $state<number | null>(null);
 
 	// Filters
 	let selectedAccount = $state('all');
@@ -76,10 +79,20 @@
 		endDate = '';
 	}
 
-	async function handleDeleteTrade(id: number) {
-		if (!authStore.token) return;
+	function openDeleteConfirm(id: number) {
+		tradeToDelete = id;
+		isDeleteConfirmOpen = true;
+	}
 
-		const { error } = await apiClient.deleteTrade(id, authStore.token);
+	function closeDeleteConfirm() {
+		tradeToDelete = null;
+		isDeleteConfirmOpen = false;
+	}
+
+	async function handleDeleteTrade() {
+		if (!authStore.token || tradeToDelete === null) return;
+
+		const { error } = await apiClient.deleteTrade(tradeToDelete, authStore.token);
 		if (error) {
 			console.error('Failed to delete trade:', error);
 			return;
@@ -87,6 +100,9 @@
 
 		// Reload accounts and trades after delete (to update balance for deposit/withdraw deletions)
 		await reloadData();
+
+		// Close the confirmation dialog
+		closeDeleteConfirm();
 	}
 
 	const metrics = {
@@ -187,7 +203,7 @@
 				<p class="text-slate-500">Loading trades...</p>
 			</div>
 		{:then trades}
-			<TradesTable {trades} onDelete={handleDeleteTrade} onUpdate={reloadData} />
+			<TradesTable {trades} onDelete={openDeleteConfirm} onUpdate={reloadData} />
 		{/await}
 	</div>
 
@@ -199,3 +215,13 @@
 <AddTradeModal isOpen={isModalOpen} onClose={closeModal} onSuccess={reloadData} />
 <DepositModal isOpen={isDepositModalOpen} onClose={closeDepositModal} onSuccess={reloadData} />
 <WithdrawModal isOpen={isWithdrawModalOpen} onClose={closeWithdrawModal} onSuccess={reloadData} />
+<ConfirmDialog
+	isOpen={isDeleteConfirmOpen}
+	title="Delete Trade"
+	message="Are you sure you want to delete this trade? This action cannot be undone."
+	confirmText="Delete"
+	cancelText="Cancel"
+	variant="danger"
+	onConfirm={handleDeleteTrade}
+	onCancel={closeDeleteConfirm}
+/>
