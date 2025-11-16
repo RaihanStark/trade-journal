@@ -68,7 +68,7 @@ VALUES (
         $18
     )
 RETURNING
-    id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+    id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at, chart_before, chart_after
 `
 
 type CreateTradeParams struct {
@@ -136,6 +136,8 @@ func (q *Queries) CreateTrade(ctx context.Context, arg CreateTradeParams) (Trade
 		&i.Amount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ChartBefore,
+		&i.ChartAfter,
 	)
 	return i, err
 }
@@ -164,7 +166,7 @@ func (q *Queries) DeleteTradeStrategies(ctx context.Context, tradeID int32) erro
 }
 
 const getTradeByID = `-- name: GetTradeByID :one
-SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at FROM trades WHERE id = $1 AND user_id = $2
+SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at, chart_before, chart_after FROM trades WHERE id = $1 AND user_id = $2
 `
 
 type GetTradeByIDParams struct {
@@ -197,6 +199,8 @@ func (q *Queries) GetTradeByID(ctx context.Context, arg GetTradeByIDParams) (Tra
 		&i.Amount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ChartBefore,
+		&i.ChartAfter,
 	)
 	return i, err
 }
@@ -241,7 +245,7 @@ func (q *Queries) GetTradeStrategies(ctx context.Context, tradeID int32) ([]Stra
 }
 
 const getTradesByAccountID = `-- name: GetTradesByAccountID :many
-SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at, chart_before, chart_after
 FROM trades
 WHERE
     account_id = $1
@@ -285,6 +289,8 @@ func (q *Queries) GetTradesByAccountID(ctx context.Context, arg GetTradesByAccou
 			&i.Amount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ChartBefore,
+			&i.ChartAfter,
 		); err != nil {
 			return nil, err
 		}
@@ -300,7 +306,7 @@ func (q *Queries) GetTradesByAccountID(ctx context.Context, arg GetTradesByAccou
 }
 
 const getTradesByAccountIDAndDateRange = `-- name: GetTradesByAccountIDAndDateRange :many
-SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at, chart_before, chart_after
 FROM trades
 WHERE
     account_id = $1
@@ -353,6 +359,8 @@ func (q *Queries) GetTradesByAccountIDAndDateRange(ctx context.Context, arg GetT
 			&i.Amount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ChartBefore,
+			&i.ChartAfter,
 		); err != nil {
 			return nil, err
 		}
@@ -368,7 +376,7 @@ func (q *Queries) GetTradesByAccountIDAndDateRange(ctx context.Context, arg GetT
 }
 
 const getTradesByUserID = `-- name: GetTradesByUserID :many
-SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at, chart_before, chart_after
 FROM trades
 WHERE
     user_id = $1
@@ -406,6 +414,8 @@ func (q *Queries) GetTradesByUserID(ctx context.Context, userID int32) ([]Trade,
 			&i.Amount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ChartBefore,
+			&i.ChartAfter,
 		); err != nil {
 			return nil, err
 		}
@@ -421,7 +431,7 @@ func (q *Queries) GetTradesByUserID(ctx context.Context, userID int32) ([]Trade,
 }
 
 const getTradesByUserIDAndDateRange = `-- name: GetTradesByUserIDAndDateRange :many
-SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at, chart_before, chart_after
 FROM trades
 WHERE
     user_id = $1
@@ -467,6 +477,8 @@ func (q *Queries) GetTradesByUserIDAndDateRange(ctx context.Context, arg GetTrad
 			&i.Amount,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ChartBefore,
+			&i.ChartAfter,
 		); err != nil {
 			return nil, err
 		}
@@ -506,7 +518,7 @@ WHERE
     id = $1
     AND user_id = $19
 RETURNING
-    id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+    id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at, chart_before, chart_after
 `
 
 type UpdateTradeParams struct {
@@ -576,6 +588,96 @@ func (q *Queries) UpdateTrade(ctx context.Context, arg UpdateTradeParams) (Trade
 		&i.Amount,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ChartBefore,
+		&i.ChartAfter,
+	)
+	return i, err
+}
+
+const updateTradeChartAfter = `-- name: UpdateTradeChartAfter :one
+UPDATE trades
+SET chart_after = $1, updated_at = NOW()
+WHERE id = $2 AND user_id = $3
+RETURNING id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at, chart_before, chart_after
+`
+
+type UpdateTradeChartAfterParams struct {
+	ChartAfter sql.NullString `json:"chart_after"`
+	ID         int32          `json:"id"`
+	UserID     int32          `json:"user_id"`
+}
+
+func (q *Queries) UpdateTradeChartAfter(ctx context.Context, arg UpdateTradeChartAfterParams) (Trade, error) {
+	row := q.db.QueryRowContext(ctx, updateTradeChartAfter, arg.ChartAfter, arg.ID, arg.UserID)
+	var i Trade
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.Date,
+		&i.Time,
+		&i.Pair,
+		&i.Type,
+		&i.Entry,
+		&i.Exit,
+		&i.Lots,
+		&i.Pips,
+		&i.Pl,
+		&i.Rr,
+		&i.Status,
+		&i.StopLoss,
+		&i.TakeProfit,
+		&i.Notes,
+		&i.Mistakes,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ChartBefore,
+		&i.ChartAfter,
+	)
+	return i, err
+}
+
+const updateTradeChartBefore = `-- name: UpdateTradeChartBefore :one
+UPDATE trades
+SET chart_before = $1, updated_at = NOW()
+WHERE id = $2 AND user_id = $3
+RETURNING id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at, chart_before, chart_after
+`
+
+type UpdateTradeChartBeforeParams struct {
+	ChartBefore sql.NullString `json:"chart_before"`
+	ID          int32          `json:"id"`
+	UserID      int32          `json:"user_id"`
+}
+
+func (q *Queries) UpdateTradeChartBefore(ctx context.Context, arg UpdateTradeChartBeforeParams) (Trade, error) {
+	row := q.db.QueryRowContext(ctx, updateTradeChartBefore, arg.ChartBefore, arg.ID, arg.UserID)
+	var i Trade
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AccountID,
+		&i.Date,
+		&i.Time,
+		&i.Pair,
+		&i.Type,
+		&i.Entry,
+		&i.Exit,
+		&i.Lots,
+		&i.Pips,
+		&i.Pl,
+		&i.Rr,
+		&i.Status,
+		&i.StopLoss,
+		&i.TakeProfit,
+		&i.Notes,
+		&i.Mistakes,
+		&i.Amount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ChartBefore,
+		&i.ChartAfter,
 	)
 	return i, err
 }

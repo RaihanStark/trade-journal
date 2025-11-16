@@ -35,6 +35,8 @@ type Querier interface {
 	UpdateAccountBalance(ctx context.Context, arg UpdateAccountBalanceParams) (UpdateAccountBalanceRow, error)
 	UpdateStrategy(ctx context.Context, arg UpdateStrategyParams) (Strategy, error)
 	UpdateTrade(ctx context.Context, arg UpdateTradeParams) (Trade, error)
+	UpdateTradeChartAfter(ctx context.Context, arg UpdateTradeChartAfterParams) (Trade, error)
+	UpdateTradeChartBefore(ctx context.Context, arg UpdateTradeChartBeforeParams) (Trade, error)
 }
 
 var _ Querier = (*Queries)(nil)

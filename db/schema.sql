@@ -154,7 +154,9 @@ CREATE TABLE public.trades (
     mistakes text,
     amount numeric(20,2),
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    chart_before text,
+    chart_after text
 );
 
 
@@ -386,4 +388,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250115000003'),
     ('20250115000004'),
     ('20250115000005'),
-    ('20250115000006');
+    ('20250115000006'),
+    ('20250116000007');

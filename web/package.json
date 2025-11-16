@@ -29,6 +29,7 @@
 	},
 	"dependencies": {
 		"lucide-svelte": "^0.553.0",
+		"viewerjs": "^1.11.7",
 		"zod": "^4.1.12"
 	}
 }

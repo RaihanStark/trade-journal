@@ -1068,3 +1068,221 @@ func TestTradeService_DateFiltering_Integration(t *testing.T) {
 		}
 	})
 }
+
+func TestTradeService_UpdateChart_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	pg := testutil.SetupTestDatabase(t)
+	tradeRepo := persistence.NewTradeRepository(pg.Queries)
+	accountRepo := persistence.NewAccountRepository(pg.Queries)
+	userRepo := persistence.NewUserRepository(pg.Queries)
+
+	tradeService := NewService(tradeRepo, accountRepo)
+	accountService := accountApp.NewService(accountRepo)
+
+	ctx := context.Background()
+
+	t.Run("updates chart before successfully", func(t *testing.T) {
+		testutil.TruncateTables(t, pg.DB)
+
+		// Create user
+		testUser := user.NewUser("chartbefore@example.com", "hashedpass")
+		createdUser, _ := userRepo.Create(ctx, testUser)
+
+		// Create account
+		accountReq := accountApp.CreateAccountRequest{
+			Name:          "Test Account",
+			Broker:        "Test Broker",
+			AccountNumber: "123",
+			AccountType:   "demo",
+			Currency:      "USD",
+			IsActive:      true,
+		}
+		account, _ := accountService.CreateAccount(ctx, createdUser.ID, accountReq)
+
+		// Create trade
+		exit := 1.1050
+		tradeReq := CreateTradeRequest{
+			AccountID: &account.ID,
+			Date:      time.Now().Format("2006-01-02"),
+			Time:      time.Now().Format("15:04"),
+			Pair:      "EUR/USD",
+			Type:      "BUY",
+			Entry:     1.1000,
+			Exit:      &exit,
+			Lots:      1.0,
+		}
+		trade, err := tradeService.CreateTrade(ctx, createdUser.ID, tradeReq)
+		if err != nil {
+			t.Fatalf("failed to create trade: %v", err)
+		}
+
+		// Verify initially chart_before is nil
+		if trade.ChartBefore != nil {
+			t.Error("expected chart_before to be nil initially")
+		}
+
+		// Update chart before
+		chartURL := "http://localhost:9000/trade-journal/1234567890_chart-before.png"
+		updatedTrade, err := tradeService.UpdateChartBefore(ctx, trade.ID, createdUser.ID, chartURL)
+		if err != nil {
+			t.Fatalf("failed to update chart before: %v", err)
+		}
+
+		// Verify chart_before was updated
+		if updatedTrade.ChartBefore == nil {
+			t.Fatal("expected chart_before to be set")
+		}
+		if *updatedTrade.ChartBefore != chartURL {
+			t.Errorf("expected chart_before URL %s, got %s", chartURL, *updatedTrade.ChartBefore)
+		}
+
+		// Verify in database
+		var dbChartBefore *string
+		err = pg.DB.QueryRow("SELECT chart_before FROM trades WHERE id = $1", trade.ID).Scan(&dbChartBefore)
+		if err != nil {
+			t.Fatalf("failed to query chart_before from database: %v", err)
+		}
+		if dbChartBefore == nil {
+			t.Fatal("expected chart_before in database to be set")
+		}
+		if *dbChartBefore != chartURL {
+			t.Errorf("expected chart_before in database %s, got %s", chartURL, *dbChartBefore)
+		}
+	})
+
+	t.Run("updates chart after successfully", func(t *testing.T) {
+		testutil.TruncateTables(t, pg.DB)
+
+		// Create user
+		testUser := user.NewUser("chartafter@example.com", "hashedpass")
+		createdUser, _ := userRepo.Create(ctx, testUser)
+
+		// Create account
+		accountReq := accountApp.CreateAccountRequest{
+			Name:          "Test Account",
+			Broker:        "Test Broker",
+			AccountNumber: "123",
+			AccountType:   "demo",
+			Currency:      "USD",
+			IsActive:      true,
+		}
+		account, _ := accountService.CreateAccount(ctx, createdUser.ID, accountReq)
+
+		// Create trade
+		exit := 1.1050
+		tradeReq := CreateTradeRequest{
+			AccountID: &account.ID,
+			Date:      time.Now().Format("2006-01-02"),
+			Time:      time.Now().Format("15:04"),
+			Pair:      "EUR/USD",
+			Type:      "BUY",
+			Entry:     1.1000,
+			Exit:      &exit,
+			Lots:      1.0,
+		}
+		trade, err := tradeService.CreateTrade(ctx, createdUser.ID, tradeReq)
+		if err != nil {
+			t.Fatalf("failed to create trade: %v", err)
+		}
+
+		// Verify initially chart_after is nil
+		if trade.ChartAfter != nil {
+			t.Error("expected chart_after to be nil initially")
+		}
+
+		// Update chart after
+		chartURL := "http://localhost:9000/trade-journal/1234567890_chart-after.png"
+		updatedTrade, err := tradeService.UpdateChartAfter(ctx, trade.ID, createdUser.ID, chartURL)
+		if err != nil {
+			t.Fatalf("failed to update chart after: %v", err)
+		}
+
+		// Verify chart_after was updated
+		if updatedTrade.ChartAfter == nil {
+			t.Fatal("expected chart_after to be set")
+		}
+		if *updatedTrade.ChartAfter != chartURL {
+			t.Errorf("expected chart_after URL %s, got %s", chartURL, *updatedTrade.ChartAfter)
+		}
+
+		// Verify in database
+		var dbChartAfter *string
+		err = pg.DB.QueryRow("SELECT chart_after FROM trades WHERE id = $1", trade.ID).Scan(&dbChartAfter)
+		if err != nil {
+			t.Fatalf("failed to query chart_after from database: %v", err)
+		}
+		if dbChartAfter == nil {
+			t.Fatal("expected chart_after in database to be set")
+		}
+		if *dbChartAfter != chartURL {
+			t.Errorf("expected chart_after in database %s, got %s", chartURL, *dbChartAfter)
+		}
+	})
+
+	t.Run("can update both charts", func(t *testing.T) {
+		testutil.TruncateTables(t, pg.DB)
+
+		// Create user
+		testUser := user.NewUser("bothcharts@example.com", "hashedpass")
+		createdUser, _ := userRepo.Create(ctx, testUser)
+
+		// Create account
+		accountReq := accountApp.CreateAccountRequest{
+			Name:          "Test Account",
+			Broker:        "Test Broker",
+			AccountNumber: "123",
+			AccountType:   "demo",
+			Currency:      "USD",
+			IsActive:      true,
+		}
+		account, _ := accountService.CreateAccount(ctx, createdUser.ID, accountReq)
+
+		// Create trade
+		exit := 1.1050
+		tradeReq := CreateTradeRequest{
+			AccountID: &account.ID,
+			Date:      time.Now().Format("2006-01-02"),
+			Time:      time.Now().Format("15:04"),
+			Pair:      "EUR/USD",
+			Type:      "BUY",
+			Entry:     1.1000,
+			Exit:      &exit,
+			Lots:      1.0,
+		}
+		trade, err := tradeService.CreateTrade(ctx, createdUser.ID, tradeReq)
+		if err != nil {
+			t.Fatalf("failed to create trade: %v", err)
+		}
+
+		// Update chart before
+		chartBeforeURL := "http://localhost:9000/trade-journal/before.png"
+		_, err = tradeService.UpdateChartBefore(ctx, trade.ID, createdUser.ID, chartBeforeURL)
+		if err != nil {
+			t.Fatalf("failed to update chart before: %v", err)
+		}
+
+		// Update chart after
+		chartAfterURL := "http://localhost:9000/trade-journal/after.png"
+		_, err = tradeService.UpdateChartAfter(ctx, trade.ID, createdUser.ID, chartAfterURL)
+		if err != nil {
+			t.Fatalf("failed to update chart after: %v", err)
+		}
+
+		// Verify both charts in database
+		var dbChartBefore, dbChartAfter *string
+		err = pg.DB.QueryRow("SELECT chart_before, chart_after FROM trades WHERE id = $1", trade.ID).Scan(&dbChartBefore, &dbChartAfter)
+		if err != nil {
+			t.Fatalf("failed to query charts from database: %v", err)
+		}
+
+		if dbChartBefore == nil || *dbChartBefore != chartBeforeURL {
+			t.Errorf("expected chart_before %s, got %v", chartBeforeURL, dbChartBefore)
+		}
+		if dbChartAfter == nil || *dbChartAfter != chartAfterURL {
+			t.Errorf("expected chart_after %s, got %v", chartAfterURL, dbChartAfter)
+		}
+	})
+}

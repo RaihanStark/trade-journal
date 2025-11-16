@@ -17,3 +17,11 @@ func NullStringToString(ns sql.NullString) string {
 	}
 	return ns.String
 }
+
+// NullStringToStringPtr converts sql.NullString to *string
+func NullStringToStringPtr(ns sql.NullString) *string {
+	if !ns.Valid {
+		return nil
+	}
+	return &ns.String
+}

@@ -123,3 +123,15 @@ WHERE
     AND date >= $3
     AND date <= $4
 ORDER BY date DESC, time DESC;
+
+-- name: UpdateTradeChartBefore :one
+UPDATE trades
+SET chart_before = $1, updated_at = NOW()
+WHERE id = $2 AND user_id = $3
+RETURNING *;
+
+-- name: UpdateTradeChartAfter :one
+UPDATE trades
+SET chart_after = $1, updated_at = NOW()
+WHERE id = $2 AND user_id = $3
+RETURNING *;

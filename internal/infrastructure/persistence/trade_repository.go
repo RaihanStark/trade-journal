@@ -233,28 +233,30 @@ func (r *TradeRepository) toDomain(t *db.Trade, strategies []db.Strategy) *trade
 	}
 
 	return &trade.Trade{
-		ID:         int64(t.ID),
-		UserID:     int64(t.UserID),
-		AccountID:  nullInt32ToInt64Ptr(t.AccountID),
-		Date:       t.Date,
-		Time:       t.Time,
-		Pair:       infradb.NullStringToString(t.Pair),
-		Type:       trade.TradeType(t.Type),
-		Entry:      nullStringToFloat(t.Entry),
-		Exit:       nullStringToFloatPtr(t.Exit),
-		Lots:       nullStringToFloat(t.Lots),
-		Pips:       nullStringToFloatPtr(t.Pips),
-		PL:         nullStringToFloatPtr(t.Pl),
-		RR:         infradb.NullStringToString(t.Rr),
-		Status:     trade.TradeStatus(t.Status),
-		StopLoss:   nullStringToFloatPtr(t.StopLoss),
-		TakeProfit: nullStringToFloatPtr(t.TakeProfit),
-		Notes:      infradb.NullStringToString(t.Notes),
-		Mistakes:   infradb.NullStringToString(t.Mistakes),
-		Amount:     nullStringToFloatPtr(t.Amount),
-		Strategies: domainStrategies,
-		CreatedAt:  t.CreatedAt.Time,
-		UpdatedAt:  t.UpdatedAt.Time,
+		ID:          int64(t.ID),
+		UserID:      int64(t.UserID),
+		AccountID:   nullInt32ToInt64Ptr(t.AccountID),
+		Date:        t.Date,
+		Time:        t.Time,
+		Pair:        infradb.NullStringToString(t.Pair),
+		Type:        trade.TradeType(t.Type),
+		Entry:       nullStringToFloat(t.Entry),
+		Exit:        nullStringToFloatPtr(t.Exit),
+		Lots:        nullStringToFloat(t.Lots),
+		Pips:        nullStringToFloatPtr(t.Pips),
+		PL:          nullStringToFloatPtr(t.Pl),
+		RR:          infradb.NullStringToString(t.Rr),
+		Status:      trade.TradeStatus(t.Status),
+		StopLoss:    nullStringToFloatPtr(t.StopLoss),
+		TakeProfit:  nullStringToFloatPtr(t.TakeProfit),
+		Notes:       infradb.NullStringToString(t.Notes),
+		Mistakes:    infradb.NullStringToString(t.Mistakes),
+		Amount:      nullStringToFloatPtr(t.Amount),
+		ChartBefore: infradb.NullStringToStringPtr(t.ChartBefore),
+		ChartAfter:  infradb.NullStringToStringPtr(t.ChartAfter),
+		Strategies:  domainStrategies,
+		CreatedAt:   t.CreatedAt.Time,
+		UpdatedAt:   t.UpdatedAt.Time,
 	}
 }
 
@@ -310,4 +312,40 @@ func formatFloat(f float64) string {
 func parseFloat(s string) float64 {
 	f, _ := strconv.ParseFloat(s, 64)
 	return f
+}
+
+func (r *TradeRepository) UpdateChartBefore(ctx context.Context, id int64, userID int64, chartURL string) (*trade.Trade, error) {
+	result, err := r.queries.UpdateTradeChartBefore(ctx, db.UpdateTradeChartBeforeParams{
+		ChartBefore: sql.NullString{String: chartURL, Valid: true},
+		ID:          int32(id),
+		UserID:      int32(userID),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	strategies, err := r.queries.GetTradeStrategies(ctx, result.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.toDomain(&result, strategies), nil
+}
+
+func (r *TradeRepository) UpdateChartAfter(ctx context.Context, id int64, userID int64, chartURL string) (*trade.Trade, error) {
+	result, err := r.queries.UpdateTradeChartAfter(ctx, db.UpdateTradeChartAfterParams{
+		ChartAfter: sql.NullString{String: chartURL, Valid: true},
+		ID:         int32(id),
+		UserID:     int32(userID),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	strategies, err := r.queries.GetTradeStrategies(ctx, result.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.toDomain(&result, strategies), nil
 }

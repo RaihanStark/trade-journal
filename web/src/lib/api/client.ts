@@ -92,6 +92,8 @@ export interface Trade {
 	notes: string;
 	mistakes: string;
 	amount: number | null;
+	chart_before: string | null;
+	chart_after: string | null;
 	strategies: Array<{ id: number; name: string }>;
 	created_at: string;
 	updated_at: string;
@@ -406,6 +408,37 @@ class ApiClient {
 				Authorization: `Bearer ${token}`
 			}
 		});
+	}
+
+	// Chart Image Upload API
+	async uploadChart(
+		tradeId: number,
+		chartType: 'before' | 'after',
+		file: File,
+		token: string
+	): Promise<{ data?: { url: string; message: string }; error?: string }> {
+		try {
+			const formData = new FormData();
+			formData.append('chart', file);
+
+			const response = await fetch(`${this.baseUrl}/api/trades/${tradeId}/chart/${chartType}`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${token}`
+				},
+				body: formData
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				return { error: (data as ApiError).error || 'An error occurred' };
+			}
+
+			return { data: data as { url: string; message: string } };
+		} catch (err) {
+			return { error: 'Network error. Please check your connection.' };
+		}
 	}
 }
 

@@ -1,7 +1,16 @@
 package e2e
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
+	"fmt"
+	"image"
+	"image/color"
+	"image/png"
+	"io"
+	"mime/multipart"
+	"net/textproto"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -16,6 +25,7 @@ import (
 	custommiddleware "github.com/raihanstark/trade-journal/internal/infrastructure/http/middleware"
 	"github.com/raihanstark/trade-journal/internal/infrastructure/persistence"
 	"github.com/raihanstark/trade-journal/internal/infrastructure/security"
+	"github.com/raihanstark/trade-journal/internal/infrastructure/storage"
 )
 
 // setupTestServer creates a fully configured Echo server for e2e tests
@@ -37,11 +47,24 @@ func setupTestServer(t *testing.T, _ *sql.DB, queries *db.Queries) *echo.Echo {
 	tradeService := tradeapp.NewService(tradeRepository, accountRepository)
 	analyticsService := analyticsapp.NewService(analyticsRepository)
 
+	// Initialize storage (MinIO for tests)
+	minioStorage, err := storage.NewMinIOStorage("localhost:9000", "minioadmin", "minioadmin123", "trade-journal", false)
+	if err != nil {
+		t.Fatalf("failed to create MinIO storage: %v", err)
+	}
+
+	// Ensure bucket exists
+	ctx := context.Background()
+	err = minioStorage.EnsureBucket(ctx)
+	if err != nil {
+		t.Fatalf("failed to ensure MinIO bucket exists: %v", err)
+	}
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	accountHandler := handlers.NewAccountHandler(accountService)
 	strategyHandler := handlers.NewStrategyHandler(strategyService)
-	tradeHandler := handlers.NewTradeHandler(tradeService)
+	tradeHandler := handlers.NewTradeHandler(tradeService, minioStorage)
 	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 
 	// Create Echo instance
@@ -76,9 +99,63 @@ func setupTestServer(t *testing.T, _ *sql.DB, queries *db.Queries) *echo.Echo {
 	protected.GET("/trades/:id", tradeHandler.GetTrade)
 	protected.PUT("/trades/:id", tradeHandler.UpdateTrade)
 	protected.DELETE("/trades/:id", tradeHandler.DeleteTrade)
+	protected.POST("/trades/:id/chart/:type", tradeHandler.UploadChart)
 
 	// Analytics routes
 	protected.GET("/analytics", analyticsHandler.GetUserAnalytics)
 
 	return e
+}
+
+// createTestImage creates a simple 1x1 PNG image for testing
+func createTestImage(t *testing.T) []byte {
+	t.Helper()
+
+	// Create a 1x1 image
+	img := image.NewRGBA(image.Rect(0, 0, 1, 1))
+	img.Set(0, 0, color.RGBA{255, 0, 0, 255}) // Red pixel
+
+	// Encode to PNG
+	var buf bytes.Buffer
+	err := png.Encode(&buf, img)
+	if err != nil {
+		t.Fatalf("failed to encode test image: %v", err)
+	}
+
+	return buf.Bytes()
+}
+
+// createMultipartForm creates a multipart form with a file upload
+func createMultipartForm(t *testing.T, body io.Writer, fieldName, filename string, fileData []byte) *multipart.Writer {
+	t.Helper()
+
+	writer := multipart.NewWriter(body)
+
+	// Detect content type from filename
+	contentType := "image/png"
+	if len(filename) > 4 && filename[len(filename)-4:] == ".txt" {
+		contentType = "text/plain"
+	}
+
+	// Create form file with proper content type header
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, fieldName, filename))
+	h.Set("Content-Type", contentType)
+
+	part, err := writer.CreatePart(h)
+	if err != nil {
+		t.Fatalf("failed to create form file: %v", err)
+	}
+
+	_, err = part.Write(fileData)
+	if err != nil {
+		t.Fatalf("failed to write file data: %v", err)
+	}
+
+	err = writer.Close()
+	if err != nil {
+		t.Fatalf("failed to close multipart writer: %v", err)
+	}
+
+	return writer
 }

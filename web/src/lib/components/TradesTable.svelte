@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
+	import { onMount } from 'svelte';
 	import TagInput from './TagInput.svelte';
 	import { apiClient, type Trade } from '$lib/api/client';
 	import { authStore } from '$lib/stores/auth.svelte';
 	import { strategiesStore } from '$lib/stores/strategies.svelte';
+	import Viewer from 'viewerjs';
+	import 'viewerjs/dist/viewer.css';
 
 	function isTransaction(trade: Trade): boolean {
 		return trade.type === 'DEPOSIT' || trade.type === 'WITHDRAW';
@@ -21,6 +24,31 @@
 	let editingField = $state<{ tradeId: number; field: string } | null>(null);
 	let editValue = $state<string>('');
 	let editStrategyNames = $state<string[]>([]);
+	let uploadingChart = $state<{ tradeId: number; type: 'before' | 'after' } | null>(null);
+
+	function openImageFullscreen(imageUrl: string) {
+		// Create a temporary container for the viewer
+		const container = document.createElement('div');
+		container.style.display = 'none';
+
+		const img = document.createElement('img');
+		img.src = imageUrl;
+		container.appendChild(img);
+		document.body.appendChild(container);
+
+		const viewer = new Viewer(img, {
+			inline: false,
+			viewed() {
+				viewer.show();
+			},
+			hidden() {
+				viewer.destroy();
+				document.body.removeChild(container);
+			}
+		});
+
+		viewer.show();
+	}
 
 	function toggleRow(tradeId: number) {
 		if (expandedRows.has(tradeId)) {
@@ -143,6 +171,90 @@
 
 	// Get strategy names for suggestions
 	let strategyNames = $derived(strategiesStore.strategies.map(s => s.name));
+
+	async function handleChartUpload(tradeId: number, chartType: 'before' | 'after', event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+
+		if (!file || !authStore.token) {
+			return;
+		}
+
+		// Validate file type
+		if (!file.type.startsWith('image/')) {
+			alert('Please select an image file');
+			return;
+		}
+
+		// Validate file size (5MB max)
+		if (file.size > 5 * 1024 * 1024) {
+			alert('File size must be less than 5MB');
+			return;
+		}
+
+		uploadingChart = { tradeId, type: chartType };
+
+		// Create a local URL for optimistic update
+		const localImageURL = URL.createObjectURL(file);
+
+		// Find the trade and update it optimistically
+		const tradeIndex = trades.findIndex(t => t.id === tradeId);
+		if (tradeIndex !== -1) {
+			const updatedTrades = [...trades];
+			if (chartType === 'before') {
+				updatedTrades[tradeIndex] = { ...updatedTrades[tradeIndex], chart_before: localImageURL };
+			} else {
+				updatedTrades[tradeIndex] = { ...updatedTrades[tradeIndex], chart_after: localImageURL };
+			}
+			trades = updatedTrades;
+		}
+
+		try {
+			const { data, error } = await apiClient.uploadChart(tradeId, chartType, file, authStore.token);
+
+			if (error) {
+				console.error('Failed to upload chart:', error);
+				alert('Failed to upload chart: ' + error);
+
+				// Revert the optimistic update on error
+				const revertIndex = trades.findIndex(t => t.id === tradeId);
+				if (revertIndex !== -1) {
+					const revertedTrades = [...trades];
+					if (chartType === 'before') {
+						revertedTrades[revertIndex] = { ...revertedTrades[revertIndex], chart_before: null };
+					} else {
+						revertedTrades[revertIndex] = { ...revertedTrades[revertIndex], chart_after: null };
+					}
+					trades = revertedTrades;
+				}
+
+				// Clean up the object URL
+				URL.revokeObjectURL(localImageURL);
+				return;
+			}
+
+			// Update with the actual server URL
+			if (data?.url) {
+				const finalIndex = trades.findIndex(t => t.id === tradeId);
+				if (finalIndex !== -1) {
+					const finalTrades = [...trades];
+					if (chartType === 'before') {
+						finalTrades[finalIndex] = { ...finalTrades[finalIndex], chart_before: data.url };
+					} else {
+						finalTrades[finalIndex] = { ...finalTrades[finalIndex], chart_after: data.url };
+					}
+					trades = finalTrades;
+				}
+
+				// Clean up the object URL after replacing with server URL
+				URL.revokeObjectURL(localImageURL);
+			}
+		} finally {
+			uploadingChart = null;
+			// Reset the input
+			input.value = '';
+		}
+	}
 </script>
 
 <div class="flex h-full flex-col bg-slate-900">
@@ -809,6 +921,136 @@
 										{:else}
 											<p class="text-sm text-slate-300">{trade.mistakes || 'No mistakes noted'}</p>
 										{/if}
+									</div>
+
+									<!-- Chart Images -->
+									<div class="col-span-2 flex flex-col gap-2">
+										<span class="text-xs font-bold uppercase text-slate-500">CHARTS</span>
+										<div class="grid grid-cols-2 gap-4">
+											<!-- Before Chart -->
+											<div class="flex flex-col gap-2">
+												<div class="flex items-center justify-between">
+													<span class="text-xs font-medium text-slate-400">Before Entry</span>
+													<label class="cursor-pointer text-slate-500 hover:text-slate-300">
+														<input
+															type="file"
+															accept="image/*"
+															class="hidden"
+															onchange={(e) => handleChartUpload(trade.id, 'before', e)}
+															disabled={uploadingChart?.tradeId === trade.id && uploadingChart?.type === 'before'}
+														/>
+														{#if uploadingChart?.tradeId === trade.id && uploadingChart?.type === 'before'}
+															<svg class="h-4 w-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																<path
+																	stroke-linecap="round"
+																	stroke-linejoin="round"
+																	stroke-width="2"
+																	d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+																></path>
+															</svg>
+														{:else}
+															<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																<path
+																	stroke-linecap="round"
+																	stroke-linejoin="round"
+																	stroke-width="2"
+																	d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+																></path>
+															</svg>
+														{/if}
+													</label>
+												</div>
+												{#if trade.chart_before}
+													<button
+														type="button"
+														onclick={() => openImageFullscreen(trade.chart_before!)}
+														class="group relative aspect-video w-full overflow-hidden border border-slate-700 bg-slate-900/50 transition-all hover:border-blue-500"
+													>
+														<img
+															src={trade.chart_before}
+															alt="Before entry chart"
+															class="h-full w-full object-contain"
+														/>
+														<div class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+															<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																<path
+																	stroke-linecap="round"
+																	stroke-linejoin="round"
+																	stroke-width="2"
+																	d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+																></path>
+															</svg>
+														</div>
+													</button>
+												{:else}
+													<div class="flex aspect-video w-full items-center justify-center border border-slate-700 bg-slate-900/50">
+														<span class="text-xs text-slate-600">No image</span>
+													</div>
+												{/if}
+											</div>
+
+											<!-- After Chart -->
+											<div class="flex flex-col gap-2">
+												<div class="flex items-center justify-between">
+													<span class="text-xs font-medium text-slate-400">After Exit</span>
+													<label class="cursor-pointer text-slate-500 hover:text-slate-300">
+														<input
+															type="file"
+															accept="image/*"
+															class="hidden"
+															onchange={(e) => handleChartUpload(trade.id, 'after', e)}
+															disabled={uploadingChart?.tradeId === trade.id && uploadingChart?.type === 'after'}
+														/>
+														{#if uploadingChart?.tradeId === trade.id && uploadingChart?.type === 'after'}
+															<svg class="h-4 w-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																<path
+																	stroke-linecap="round"
+																	stroke-linejoin="round"
+																	stroke-width="2"
+																	d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+																></path>
+															</svg>
+														{:else}
+															<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																<path
+																	stroke-linecap="round"
+																	stroke-linejoin="round"
+																	stroke-width="2"
+																	d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+																></path>
+															</svg>
+														{/if}
+													</label>
+												</div>
+												{#if trade.chart_after}
+													<button
+														type="button"
+														onclick={() => openImageFullscreen(trade.chart_after!)}
+														class="group relative aspect-video w-full overflow-hidden border border-slate-700 bg-slate-900/50 transition-all hover:border-blue-500"
+													>
+														<img
+															src={trade.chart_after}
+															alt="After exit chart"
+															class="h-full w-full object-contain"
+														/>
+														<div class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+															<svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+																<path
+																	stroke-linecap="round"
+																	stroke-linejoin="round"
+																	stroke-width="2"
+																	d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+																></path>
+															</svg>
+														</div>
+													</button>
+												{:else}
+													<div class="flex aspect-video w-full items-center justify-center border border-slate-700 bg-slate-900/50">
+														<span class="text-xs text-slate-600">No image</span>
+													</div>
+												{/if}
+											</div>
+										</div>
 									</div>
 								</div>
 							</div>

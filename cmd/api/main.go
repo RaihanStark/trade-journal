@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -20,6 +21,7 @@ import (
 	custommiddleware "github.com/raihanstark/trade-journal/internal/infrastructure/http/middleware"
 	"github.com/raihanstark/trade-journal/internal/infrastructure/persistence"
 	"github.com/raihanstark/trade-journal/internal/infrastructure/security"
+	"github.com/raihanstark/trade-journal/internal/infrastructure/storage"
 )
 
 func main() {
@@ -32,6 +34,10 @@ func main() {
 	databaseURL := os.Getenv("DATABASE_URL")
 	jwtSecret := os.Getenv("JWT_SECRET")
 	port := os.Getenv("PORT")
+	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
+	minioAccessKey := os.Getenv("MINIO_ACCESS_KEY")
+	minioSecretKey := os.Getenv("MINIO_SECRET_KEY")
+	minioBucket := os.Getenv("MINIO_BUCKET")
 
 	if databaseURL == "" {
 		log.Fatal("DATABASE_URL environment variable is required")
@@ -41,6 +47,18 @@ func main() {
 	}
 	if port == "" {
 		port = "8080"
+	}
+	if minioEndpoint == "" {
+		minioEndpoint = "localhost:9000"
+	}
+	if minioAccessKey == "" {
+		minioAccessKey = "minioadmin"
+	}
+	if minioSecretKey == "" {
+		minioSecretKey = "minioadmin123"
+	}
+	if minioBucket == "" {
+		minioBucket = "trade-journal"
 	}
 
 	// Connect to database
@@ -72,11 +90,25 @@ func main() {
 	tradeService := tradeapp.NewService(tradeRepository, accountRepository)
 	analyticsService := analyticsapp.NewService(analyticsRepository)
 
+	// Initialize storage (MinIO)
+	minioStorage, err := storage.NewMinIOStorage(minioEndpoint, minioAccessKey, minioSecretKey, minioBucket, false)
+	if err != nil {
+		log.Fatalf("Failed to initialize MinIO storage: %v", err)
+	}
+
+	// Ensure bucket exists
+	err = minioStorage.EnsureBucket(context.Background())
+	if err != nil {
+		log.Printf("Warning: Failed to ensure MinIO bucket exists: %v", err)
+	} else {
+		log.Println("MinIO storage initialized successfully")
+	}
+
 	// Initialize presentation layer
 	authHandler := handlers.NewAuthHandler(authService)
 	accountHandler := handlers.NewAccountHandler(accountService)
 	strategyHandler := handlers.NewStrategyHandler(strategyService)
-	tradeHandler := handlers.NewTradeHandler(tradeService)
+	tradeHandler := handlers.NewTradeHandler(tradeService, minioStorage)
 	analyticsHandler := handlers.NewAnalyticsHandler(analyticsService)
 
 	// Create Echo instance
@@ -130,6 +162,7 @@ func main() {
 	protected.GET("/trades/:id", tradeHandler.GetTrade)
 	protected.PUT("/trades/:id", tradeHandler.UpdateTrade)
 	protected.DELETE("/trades/:id", tradeHandler.DeleteTrade)
+	protected.POST("/trades/:id/chart/:type", tradeHandler.UploadChart)
 
 	// Analytics routes
 	protected.GET("/analytics", analyticsHandler.GetUserAnalytics)

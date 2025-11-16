@@ -121,27 +121,29 @@ type Strategy struct {
 }
 
 type Trade struct {
-	ID         int32          `json:"id"`
-	UserID     int32          `json:"user_id"`
-	AccountID  sql.NullInt32  `json:"account_id"`
-	Date       time.Time      `json:"date"`
-	Time       time.Time      `json:"time"`
-	Pair       sql.NullString `json:"pair"`
-	Type       TradeType      `json:"type"`
-	Entry      sql.NullString `json:"entry"`
-	Exit       sql.NullString `json:"exit"`
-	Lots       sql.NullString `json:"lots"`
-	Pips       sql.NullString `json:"pips"`
-	Pl         sql.NullString `json:"pl"`
-	Rr         sql.NullString `json:"rr"`
-	Status     TradeStatus    `json:"status"`
-	StopLoss   sql.NullString `json:"stop_loss"`
-	TakeProfit sql.NullString `json:"take_profit"`
-	Notes      sql.NullString `json:"notes"`
-	Mistakes   sql.NullString `json:"mistakes"`
-	Amount     sql.NullString `json:"amount"`
-	CreatedAt  sql.NullTime   `json:"created_at"`
-	UpdatedAt  sql.NullTime   `json:"updated_at"`
+	ID          int32          `json:"id"`
+	UserID      int32          `json:"user_id"`
+	AccountID   sql.NullInt32  `json:"account_id"`
+	Date        time.Time      `json:"date"`
+	Time        time.Time      `json:"time"`
+	Pair        sql.NullString `json:"pair"`
+	Type        TradeType      `json:"type"`
+	Entry       sql.NullString `json:"entry"`
+	Exit        sql.NullString `json:"exit"`
+	Lots        sql.NullString `json:"lots"`
+	Pips        sql.NullString `json:"pips"`
+	Pl          sql.NullString `json:"pl"`
+	Rr          sql.NullString `json:"rr"`
+	Status      TradeStatus    `json:"status"`
+	StopLoss    sql.NullString `json:"stop_loss"`
+	TakeProfit  sql.NullString `json:"take_profit"`
+	Notes       sql.NullString `json:"notes"`
+	Mistakes    sql.NullString `json:"mistakes"`
+	Amount      sql.NullString `json:"amount"`
+	CreatedAt   sql.NullTime   `json:"created_at"`
+	UpdatedAt   sql.NullTime   `json:"updated_at"`
+	ChartBefore sql.NullString `json:"chart_before"`
+	ChartAfter  sql.NullString `json:"chart_after"`
 }
 
 type TradeStrategy struct {

@@ -1,7 +1,9 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: trade-journal-postgres
+    container_name: trade-journal-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -36,6 +38,4 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
   minio_data:
-    driver: local

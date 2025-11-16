@@ -28,6 +28,11 @@ type TradeRepositorySpy struct {
 	GetByAccountIDCalls  []GetByAccountIDCall
 	GetByAccountIDResult []*tradedom.Trade
 	GetByAccountIDError  error
+
+	UpdateChartBeforeResult *tradedom.Trade
+	UpdateChartBeforeError  error
+	UpdateChartAfterResult  *tradedom.Trade
+	UpdateChartAfterError   error
 }
 
 type GetByIDCall struct {
@@ -123,6 +128,14 @@ func (s *AccountRepositorySpy) Delete(ctx context.Context, id int64, userID int6
 func (s *TradeRepositorySpy) GetByAccountID(ctx context.Context, accountID int64, userID int64) ([]*tradedom.Trade, error) {
 	s.GetByAccountIDCalls = append(s.GetByAccountIDCalls, GetByAccountIDCall{AccountID: accountID, UserID: userID})
 	return s.GetByAccountIDResult, s.GetByAccountIDError
+}
+
+func (s *TradeRepositorySpy) UpdateChartBefore(ctx context.Context, id int64, userID int64, chartURL string) (*tradedom.Trade, error) {
+	return s.UpdateChartBeforeResult, s.UpdateChartBeforeError
+}
+
+func (s *TradeRepositorySpy) UpdateChartAfter(ctx context.Context, id int64, userID int64, chartURL string) (*tradedom.Trade, error) {
+	return s.UpdateChartAfterResult, s.UpdateChartAfterError
 }
 
 func TestService_GetTradesByAccountID(t *testing.T) {
@@ -789,6 +802,102 @@ func TestService_GetTradesByAccountIDWithDateFilter(t *testing.T) {
 
 		if err.Error() != "invalid end_date format, expected YYYY-MM-DD" {
 			t.Errorf("unexpected error message: %v", err)
+		}
+	})
+}
+
+func TestService_UpdateChartBefore(t *testing.T) {
+	ctx := context.Background()
+	tradeID := int64(1)
+	userID := int64(1)
+	chartURL := "http://localhost:9000/trade-journal/chart-before.png"
+
+	t.Run("updates chart before successfully", func(t *testing.T) {
+		updatedTrade := &tradedom.Trade{
+			ID:          tradeID,
+			UserID:      userID,
+			ChartBefore: &chartURL,
+		}
+
+		tradeRepo := &TradeRepositorySpy{}
+		tradeRepo.UpdateChartBeforeResult = updatedTrade
+		accountRepo := &AccountRepositorySpy{}
+		service := NewService(tradeRepo, accountRepo)
+
+		result, err := service.UpdateChartBefore(ctx, tradeID, userID, chartURL)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if result.ChartBefore == nil {
+			t.Fatal("expected chart_before to be set")
+		}
+
+		if *result.ChartBefore != chartURL {
+			t.Errorf("expected chart_before URL %s, got %s", chartURL, *result.ChartBefore)
+		}
+	})
+
+	t.Run("propagates error from repository", func(t *testing.T) {
+		expectedErr := errors.New("database error")
+		tradeRepo := &TradeRepositorySpy{}
+		tradeRepo.UpdateChartBeforeError = expectedErr
+		accountRepo := &AccountRepositorySpy{}
+		service := NewService(tradeRepo, accountRepo)
+
+		_, err := service.UpdateChartBefore(ctx, tradeID, userID, chartURL)
+
+		if err != expectedErr {
+			t.Errorf("expected error %v, got %v", expectedErr, err)
+		}
+	})
+}
+
+func TestService_UpdateChartAfter(t *testing.T) {
+	ctx := context.Background()
+	tradeID := int64(1)
+	userID := int64(1)
+	chartURL := "http://localhost:9000/trade-journal/chart-after.png"
+
+	t.Run("updates chart after successfully", func(t *testing.T) {
+		updatedTrade := &tradedom.Trade{
+			ID:         tradeID,
+			UserID:     userID,
+			ChartAfter: &chartURL,
+		}
+
+		tradeRepo := &TradeRepositorySpy{}
+		tradeRepo.UpdateChartAfterResult = updatedTrade
+		accountRepo := &AccountRepositorySpy{}
+		service := NewService(tradeRepo, accountRepo)
+
+		result, err := service.UpdateChartAfter(ctx, tradeID, userID, chartURL)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if result.ChartAfter == nil {
+			t.Fatal("expected chart_after to be set")
+		}
+
+		if *result.ChartAfter != chartURL {
+			t.Errorf("expected chart_after URL %s, got %s", chartURL, *result.ChartAfter)
+		}
+	})
+
+	t.Run("propagates error from repository", func(t *testing.T) {
+		expectedErr := errors.New("database error")
+		tradeRepo := &TradeRepositorySpy{}
+		tradeRepo.UpdateChartAfterError = expectedErr
+		accountRepo := &AccountRepositorySpy{}
+		service := NewService(tradeRepo, accountRepo)
+
+		_, err := service.UpdateChartAfter(ctx, tradeID, userID, chartURL)
+
+		if err != expectedErr {
+			t.Errorf("expected error %v, got %v", expectedErr, err)
 		}
 	})
 }

@@ -14,4 +14,6 @@ type Repository interface {
 	Delete(ctx context.Context, id int64, userID int64) error
 	GetByAccountID(ctx context.Context, accountID int64, userID int64) ([]*Trade, error)
 	GetByAccountIDAndDateRange(ctx context.Context, accountID int64, userID int64, startDate, endDate time.Time) ([]*Trade, error)
+	UpdateChartBefore(ctx context.Context, id int64, userID int64, chartURL string) (*Trade, error)
+	UpdateChartAfter(ctx context.Context, id int64, userID int64, chartURL string) (*Trade, error)
 }

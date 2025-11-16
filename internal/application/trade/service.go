@@ -340,26 +340,44 @@ func (s *Service) toDTO(t *trade.Trade) *TradeDTO {
 	}
 
 	return &TradeDTO{
-		ID:         t.ID,
-		AccountID:  t.AccountID,
-		Date:       t.Date.Format("2006-01-02"),
-		Time:       t.Time.Format("15:04"),
-		Pair:       t.Pair,
-		Type:       string(t.Type),
-		Entry:      t.Entry,
-		Exit:       t.Exit,
-		Lots:       t.Lots,
-		Pips:       t.Pips,
-		PL:         t.PL,
-		RR:         t.RR,
-		Status:     string(t.Status),
-		StopLoss:   t.StopLoss,
-		TakeProfit: t.TakeProfit,
-		Notes:      t.Notes,
-		Mistakes:   t.Mistakes,
-		Amount:     t.Amount,
-		Strategies: strategies,
-		CreatedAt:  t.CreatedAt,
-		UpdatedAt:  t.UpdatedAt,
+		ID:          t.ID,
+		AccountID:   t.AccountID,
+		Date:        t.Date.Format("2006-01-02"),
+		Time:        t.Time.Format("15:04"),
+		Pair:        t.Pair,
+		Type:        string(t.Type),
+		Entry:       t.Entry,
+		Exit:        t.Exit,
+		Lots:        t.Lots,
+		Pips:        t.Pips,
+		PL:          t.PL,
+		RR:          t.RR,
+		Status:      string(t.Status),
+		StopLoss:    t.StopLoss,
+		TakeProfit:  t.TakeProfit,
+		Notes:       t.Notes,
+		Mistakes:    t.Mistakes,
+		Amount:      t.Amount,
+		ChartBefore: t.ChartBefore,
+		ChartAfter:  t.ChartAfter,
+		Strategies:  strategies,
+		CreatedAt:   t.CreatedAt,
+		UpdatedAt:   t.UpdatedAt,
 	}
+}
+
+func (s *Service) UpdateChartBefore(ctx context.Context, tradeID int64, userID int64, chartURL string) (*TradeDTO, error) {
+	trade, err := s.repo.UpdateChartBefore(ctx, tradeID, userID, chartURL)
+	if err != nil {
+		return nil, err
+	}
+	return s.toDTO(trade), nil
+}
+
+func (s *Service) UpdateChartAfter(ctx context.Context, tradeID int64, userID int64, chartURL string) (*TradeDTO, error) {
+	trade, err := s.repo.UpdateChartAfter(ctx, tradeID, userID, chartURL)
+	if err != nil {
+		return nil, err
+	}
+	return s.toDTO(trade), nil
 }

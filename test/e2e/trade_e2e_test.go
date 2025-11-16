@@ -448,3 +448,176 @@ func makeDeposit(t *testing.T, e *echo.Echo, token string, accountID int, amount
 		t.Fatalf("failed to make deposit: %d - %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestE2E_Trade_ChartImageUpload(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test")
+	}
+
+	pg := testutil.SetupTestDatabase(t)
+	testutil.TruncateTables(t, pg.DB)
+
+	e := setupTestServer(t, pg.DB, pg.Queries)
+
+	// Register and get token
+	authToken := registerUser(t, e, "chartupload@example.com", "password123")
+
+	// Create account
+	accountID := createAccount(t, e, authToken, "Chart Test Account")
+
+	// Create a trade
+	tradePayload := map[string]any{
+		"account_id":  accountID,
+		"date":        "2025-01-16",
+		"time":        "14:30",
+		"pair":        "EURUSD",
+		"type":        "BUY",
+		"entry":       1.1000,
+		"exit":        1.1050,
+		"lots":        0.1,
+		"stop_loss":   1.0950,
+		"take_profit": 1.1100,
+		"notes":       "Test trade for chart upload",
+	}
+	tradeBody, _ := json.Marshal(tradePayload)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/trades", bytes.NewReader(tradeBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	req.Header.Set(echo.HeaderAuthorization, "Bearer "+authToken)
+	rec := httptest.NewRecorder()
+
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("failed to create trade: %d - %s", rec.Code, rec.Body.String())
+	}
+
+	var tradeResponse map[string]any
+	json.Unmarshal(rec.Body.Bytes(), &tradeResponse)
+	tradeID := int64(tradeResponse["id"].(float64))
+
+	t.Run("upload chart before image", func(t *testing.T) {
+		// Create a test image (simple 1x1 PNG)
+		imageData := createTestImage(t)
+
+		// Create multipart form data
+		body := &bytes.Buffer{}
+		writer := createMultipartForm(t, body, "chart", "test-before.png", imageData)
+
+		url := fmt.Sprintf("/api/trades/%d/chart/before", tradeID)
+		req := httptest.NewRequest(http.MethodPost, url, body)
+		req.Header.Set(echo.HeaderContentType, writer.FormDataContentType())
+		req.Header.Set(echo.HeaderAuthorization, "Bearer "+authToken)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		var response map[string]any
+		json.Unmarshal(rec.Body.Bytes(), &response)
+
+		// Verify response contains URL
+		if response["url"] == nil {
+			t.Fatal("expected URL in response")
+		}
+
+		chartURL := response["url"].(string)
+		if chartURL == "" {
+			t.Fatal("expected non-empty chart URL")
+		}
+
+		// Verify database updated
+		var chartBefore *string
+		err := pg.DB.QueryRow("SELECT chart_before FROM trades WHERE id = $1", tradeID).Scan(&chartBefore)
+		if err != nil {
+			t.Fatalf("failed to query chart_before: %v", err)
+		}
+
+		if chartBefore == nil {
+			t.Fatal("expected chart_before to be set in database")
+		}
+
+		if *chartBefore != chartURL {
+			t.Fatalf("expected chart_before to be %s, got %s", chartURL, *chartBefore)
+		}
+	})
+
+	t.Run("upload chart after image", func(t *testing.T) {
+		imageData := createTestImage(t)
+
+		body := &bytes.Buffer{}
+		writer := createMultipartForm(t, body, "chart", "test-after.png", imageData)
+
+		url := fmt.Sprintf("/api/trades/%d/chart/after", tradeID)
+		req := httptest.NewRequest(http.MethodPost, url, body)
+		req.Header.Set(echo.HeaderContentType, writer.FormDataContentType())
+		req.Header.Set(echo.HeaderAuthorization, "Bearer "+authToken)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		var response map[string]any
+		json.Unmarshal(rec.Body.Bytes(), &response)
+
+		if response["url"] == nil {
+			t.Fatal("expected URL in response")
+		}
+
+		// Verify database updated
+		var chartAfter *string
+		err := pg.DB.QueryRow("SELECT chart_after FROM trades WHERE id = $1", tradeID).Scan(&chartAfter)
+		if err != nil {
+			t.Fatalf("failed to query chart_after: %v", err)
+		}
+
+		if chartAfter == nil {
+			t.Fatal("expected chart_after to be set in database")
+		}
+	})
+
+	t.Run("upload invalid file type returns error", func(t *testing.T) {
+		// Create invalid file (text file)
+		textData := []byte("This is not an image")
+
+		body := &bytes.Buffer{}
+		writer := createMultipartForm(t, body, "chart", "test.txt", textData)
+
+		url := fmt.Sprintf("/api/trades/%d/chart/before", tradeID)
+		req := httptest.NewRequest(http.MethodPost, url, body)
+		req.Header.Set(echo.HeaderContentType, writer.FormDataContentType())
+		req.Header.Set(echo.HeaderAuthorization, "Bearer "+authToken)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected status 400, got %d", rec.Code)
+		}
+	})
+
+	t.Run("upload without authentication returns error", func(t *testing.T) {
+		imageData := createTestImage(t)
+
+		body := &bytes.Buffer{}
+		writer := createMultipartForm(t, body, "chart", "test.png", imageData)
+
+		url := fmt.Sprintf("/api/trades/%d/chart/before", tradeID)
+		req := httptest.NewRequest(http.MethodPost, url, body)
+		req.Header.Set(echo.HeaderContentType, writer.FormDataContentType())
+		// No authorization header
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected status 401, got %d", rec.Code)
+		}
+	})
+}
