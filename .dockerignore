@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+.claude/
+
+# Development files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+test/
+*_test.go
+coverage.txt
+
+# Build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Frontend
+web/
+
+# Misc
+.DS_Store
+tmp/
+temp/

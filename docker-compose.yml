@@ -1,9 +1,10 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: trade-journal-db
+    container_name: trade-journal-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -17,7 +18,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - trade-journal-network
 
+  # MinIO Object Storage
   minio:
     image: minio/minio:latest
     container_name: trade-journal-minio
@@ -35,6 +39,53 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+    networks:
+      - trade-journal-network
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trade-journal-backend
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/trade_journal?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production}
+      PORT: 8080
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      MINIO_BUCKET: trade-journal
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - trade-journal-network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8080
+    container_name: trade-journal-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - trade-journal-network
+    restart: unless-stopped
+
+networks:
+  trade-journal-network:
+    driver: bridge
 
 volumes:
   postgres_data:

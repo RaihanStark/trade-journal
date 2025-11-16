@@ -1,0 +1,35 @@
+version: '3.8'
+
+# Production overrides for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    # Don't expose PostgreSQL port in production
+    ports: []
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+
+  minio:
+    # Don't expose MinIO console in production
+    ports:
+      - "9000:9000"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-changeme}
+
+  backend:
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-changeme}@postgres:5432/trade_journal?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-changeme}
+    # Only expose backend through reverse proxy
+    ports: []
+
+  frontend:
+    build:
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://api.yourdomain.com}
+    # Only expose frontend through reverse proxy
+    ports: []

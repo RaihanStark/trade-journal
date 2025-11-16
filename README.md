@@ -139,7 +139,30 @@ npm run dev
 
 The frontend will be available at `http://localhost:5173`
 
-## Quick Start (Full Stack)
+## Quick Start
+
+### Option 1: Docker (Recommended for Production/Easy Setup)
+
+Deploy the entire stack with one command:
+
+```bash
+./deploy.sh
+```
+
+Or manually:
+
+```bash
+docker-compose up -d
+```
+
+Access the application:
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:8080`
+- MinIO Console: `http://localhost:9001`
+
+See [DOCKER.md](./DOCKER.md) for detailed Docker deployment instructions.
+
+### Option 2: Local Development
 
 **Terminal 1 - Database:**
 ```bash
