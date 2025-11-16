@@ -7,10 +7,10 @@ services:
     container_name: trade-journal-postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: trade_journal
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -26,11 +26,11 @@ services:
     image: minio/minio:latest
     container_name: trade-journal-minio
     ports:
-      - "9000:9000"    # API
-      - "9001:9001"    # Console UI
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -49,15 +49,15 @@ services:
       dockerfile: Dockerfile
     container_name: trade-journal-backend
     environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/trade_journal?sslmode=disable
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/trade_journal?sslmode=disable
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-this-in-production}
       PORT: 8080
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin123
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
       MINIO_BUCKET: trade-journal
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -73,10 +73,10 @@ services:
       context: ./web
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: http://localhost:8080
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
     container_name: trade-journal-frontend
     ports:
-      - "3000:80"
+      - "${FRONTEND_PORT:-3000}:80"
     depends_on:
       - backend
     networks:
