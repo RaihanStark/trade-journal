@@ -24,11 +24,20 @@ type TradeRepositorySpy struct {
 	UpdateResult  *tradedom.Trade
 	UpdateError   error
 	DeleteError   error
+
+	GetByAccountIDCalls  []GetByAccountIDCall
+	GetByAccountIDResult []*tradedom.Trade
+	GetByAccountIDError  error
 }
 
 type GetByIDCall struct {
 	ID     int64
 	UserID int64
+}
+
+type GetByAccountIDCall struct {
+	AccountID int64
+	UserID    int64
 }
 
 type DeleteCall struct {
@@ -101,6 +110,33 @@ func (s *AccountRepositorySpy) Update(ctx context.Context, acc *account.Account)
 
 func (s *AccountRepositorySpy) Delete(ctx context.Context, id int64, userID int64) error {
 	return errors.New("not implemented")
+}
+
+func (s *TradeRepositorySpy) GetByAccountID(ctx context.Context, accountID int64, userID int64) ([]*tradedom.Trade, error) {
+	s.GetByAccountIDCalls = append(s.GetByAccountIDCalls, GetByAccountIDCall{AccountID: accountID, UserID: userID})
+	return s.GetByAccountIDResult, s.GetByAccountIDError
+}
+
+func TestService_GetTradesByAccountID(t *testing.T) {
+	ctx := context.Background()
+	accountID := int64(1)
+	userID := int64(1)
+	amount := 1000.0
+
+	tradeSpy := &TradeRepositorySpy{
+		GetByAccountIDResult: []*tradedom.Trade{{ID: 1, UserID: userID, AccountID: &accountID, Type: tradedom.TradeTypeDeposit, Amount: &amount, CreatedAt: time.Now(), UpdatedAt: time.Now()}},
+	}
+
+	service := NewService(tradeSpy, &AccountRepositorySpy{})
+
+	trades, err := service.GetTradesByAccountID(ctx, accountID, userID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(trades) != 1 {
+		t.Fatalf("expected 1 trade, got %d", len(trades))
+	}
 }
 
 func TestService_CreateTrade_Validation(t *testing.T) {

@@ -681,3 +681,105 @@ func TestTradeService_WithStrategies_Integration(t *testing.T) {
 		}
 	})
 }
+
+func TestTradeService_GetTradesByAccountID_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	pg := testutil.SetupTestDatabase(t)
+	tradeRepo := persistence.NewTradeRepository(pg.Queries)
+	accountRepo := persistence.NewAccountRepository(pg.Queries)
+	userRepo := persistence.NewUserRepository(pg.Queries)
+
+	tradeService := NewService(tradeRepo, accountRepo)
+	accountService := accountApp.NewService(accountRepo)
+
+	exit := 1.1050
+	stopLoss := 1.0980
+	takeProfit := 1.1060
+	amount := 1000.0
+
+	ctx := context.Background()
+
+	t.Run("get trades by account ID", func(t *testing.T) {
+		testutil.TruncateTables(t, pg.DB)
+
+		// Create user
+		testUser := user.NewUser("gettradesbyaccountid@example.com", "hashedpass")
+		createdUser, _ := userRepo.Create(ctx, testUser)
+
+		// Create account
+		accountReq := accountApp.CreateAccountRequest{
+			Name:          "Test Account",
+			Broker:        "Test Broker",
+			AccountNumber: "123",
+			AccountType:   "demo",
+			Currency:      "USD",
+			IsActive:      true,
+		}
+		// Create account 2
+		account2Req := accountApp.CreateAccountRequest{
+			Name:          "Test Account 2",
+			Broker:        "Test Broker 2",
+			AccountNumber: "456",
+			AccountType:   "demo",
+			Currency:      "USD",
+			IsActive:      true,
+		}
+		account, _ := accountService.CreateAccount(ctx, createdUser.ID, accountReq)
+		account2, _ := accountService.CreateAccount(ctx, createdUser.ID, account2Req)
+
+		// Create trade
+		tradeReq := CreateTradeRequest{
+			AccountID:  &account.ID,
+			Date:       time.Now().Format("2006-01-02"),
+			Time:       time.Now().Format("15:04"),
+			Pair:       "EUR/USD",
+			Type:       "BUY",
+			Entry:      1.1000,
+			Exit:       &exit,
+			Lots:       1.0,
+			StopLoss:   &stopLoss,
+			TakeProfit: &takeProfit,
+			Amount:     &amount,
+		}
+		_, err := tradeService.CreateTrade(ctx, createdUser.ID, tradeReq)
+		if err != nil {
+			t.Fatalf("failed to create trade: %v", err)
+		}
+
+		// Create trade on account2
+		trade2Req := CreateTradeRequest{
+			AccountID: &account2.ID,
+			Date:      time.Now().Format("2006-01-02"),
+			Time:      time.Now().Format("15:04"),
+			Pair:      "EUR/USD",
+			Type:      "BUY",
+			Entry:     1.1000,
+		}
+		_, err = tradeService.CreateTrade(ctx, createdUser.ID, trade2Req)
+		if err != nil {
+			t.Fatalf("failed to create trade: %v", err)
+		}
+
+		// Get trades by account ID
+		trades, err := tradeService.GetTradesByAccountID(ctx, account.ID, createdUser.ID)
+		if err != nil {
+			t.Fatalf("failed to get trades by account ID: %v", err)
+		}
+
+		// verify that only get one trade for account1
+		if len(trades) != 1 {
+			t.Fatalf("expected 1 trade, got %d", len(trades))
+		}
+
+		if trades[0].AccountID == nil {
+			t.Fatal("expected account ID to be set, got nil")
+		}
+
+		if *trades[0].AccountID != account.ID {
+			t.Fatalf("expected account ID %d, got %d", account.ID, *trades[0].AccountID)
+		}
+	})
+}

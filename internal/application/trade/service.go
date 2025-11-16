@@ -25,6 +25,20 @@ func NewService(repo trade.Repository, accountRepo account.Repository) *Service 
 	}
 }
 
+func (s *Service) GetTradesByAccountID(ctx context.Context, accountID int64, userID int64) ([]*TradeDTO, error) {
+	trades, err := s.repo.GetByAccountID(ctx, accountID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	dtos := make([]*TradeDTO, len(trades))
+	for i, t := range trades {
+		dtos[i] = s.toDTO(t)
+	}
+	return dtos, nil
+
+}
+
 func (s *Service) CreateTrade(ctx context.Context, userID int64, req CreateTradeRequest) (*TradeDTO, error) {
 	// Validate required fields
 	if req.AccountID == nil {
@@ -175,7 +189,7 @@ func (s *Service) UpdateTrade(ctx context.Context, id int64, userID int64, req U
 	}
 
 	// Update account balance if P/L changed for BUY/SELL trades
-	if (t.Type == trade.TradeTypeBuy || t.Type == trade.TradeTypeSell) {
+	if t.Type == trade.TradeTypeBuy || t.Type == trade.TradeTypeSell {
 		// Check if account changed
 		accountChanged := false
 		if (existingTrade.AccountID == nil && t.AccountID != nil) ||

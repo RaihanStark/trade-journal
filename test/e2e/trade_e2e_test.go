@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -238,6 +239,91 @@ func TestE2E_Trade_ClosedTradeWithProfitAndLoss(t *testing.T) {
 			t.Errorf("expected balance -49000 after delete, got %.2f", balance)
 		}
 	})
+}
+
+func TestE2E_Trade_FilterTradesByAccount(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test")
+	}
+
+	pg := testutil.SetupTestDatabase(t)
+	testutil.TruncateTables(t, pg.DB)
+
+	e := setupTestServer(t, pg.DB, pg.Queries)
+
+	// Register and get token
+	authToken := registerUser(t, e, "trader@example.com", "password123")
+
+	// Create account
+	accountID := createAccount(t, e, authToken, "Test Account")
+	accountID2 := createAccount(t, e, authToken, "Test Account 2")
+
+	// Create trade
+	createTrade(t, e, authToken, accountID, "BUY", 1.1000, nil)
+	createTrade(t, e, authToken, accountID2, "BUY", 1.2, nil)
+
+	t.Run("get trades by account 1", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/trades?account_id="+strconv.Itoa(accountID), nil)
+		req.Header.Set(echo.HeaderAuthorization, "Bearer "+authToken)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		var trades []map[string]any
+		json.Unmarshal(rec.Body.Bytes(), &trades)
+		if len(trades) != 1 {
+			t.Fatalf("expected 1 trade, got %d", len(trades))
+		}
+
+		if int(trades[0]["account_id"].(float64)) != accountID {
+			t.Fatalf("expected account_id %d, got %v", accountID, trades[0]["account_id"])
+		}
+	})
+
+	t.Run("get trades by account 2", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/trades?account_id="+strconv.Itoa(accountID2), nil)
+		req.Header.Set(echo.HeaderAuthorization, "Bearer "+authToken)
+		rec := httptest.NewRecorder()
+
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		var trades []map[string]any
+		json.Unmarshal(rec.Body.Bytes(), &trades)
+		if len(trades) != 1 {
+			t.Fatalf("expected 1 trade, got %d", len(trades))
+		}
+
+		if int(trades[0]["account_id"].(float64)) != accountID2 {
+			t.Fatalf("expected account_id %d, got %v", accountID2, trades[0]["account_id"])
+		}
+	})
+
+	// Test that there's no trades for account 3
+	t.Run("get trades by account 3", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/trades?account_id="+strconv.Itoa(3), nil)
+		req.Header.Set(echo.HeaderAuthorization, "Bearer "+authToken)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+		}
+
+		var trades []map[string]any
+		json.Unmarshal(rec.Body.Bytes(), &trades)
+		if len(trades) != 0 {
+			t.Fatalf("expected 0 trades, got %d", len(trades))
+		}
+	})
+
 }
 
 // Helper functions

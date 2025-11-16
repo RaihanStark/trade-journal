@@ -12,8 +12,7 @@ import (
 )
 
 const addTradeStrategy = `-- name: AddTradeStrategy :exec
-INSERT INTO trade_strategies (trade_id, strategy_id)
-VALUES ($1, $2)
+INSERT INTO trade_strategies (trade_id, strategy_id) VALUES ($1, $2)
 `
 
 type AddTradeStrategyParams struct {
@@ -27,13 +26,49 @@ func (q *Queries) AddTradeStrategy(ctx context.Context, arg AddTradeStrategyPara
 }
 
 const createTrade = `-- name: CreateTrade :one
-INSERT INTO trades (
-    user_id, account_id, date, time, pair, type, entry, exit, lots,
-    pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount
-) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
-)
-RETURNING id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+INSERT INTO
+    trades (
+        user_id,
+        account_id,
+        date,
+        time,
+        pair,
+        type,
+        entry,
+        exit,
+        lots,
+        pips,
+        pl,
+        rr,
+        status,
+        stop_loss,
+        take_profit,
+        notes,
+        mistakes,
+        amount
+    )
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12,
+        $13,
+        $14,
+        $15,
+        $16,
+        $17,
+        $18
+    )
+RETURNING
+    id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
 `
 
 type CreateTradeParams struct {
@@ -106,8 +141,7 @@ func (q *Queries) CreateTrade(ctx context.Context, arg CreateTradeParams) (Trade
 }
 
 const deleteTrade = `-- name: DeleteTrade :exec
-DELETE FROM trades
-WHERE id = $1 AND user_id = $2
+DELETE FROM trades WHERE id = $1 AND user_id = $2
 `
 
 type DeleteTradeParams struct {
@@ -121,8 +155,7 @@ func (q *Queries) DeleteTrade(ctx context.Context, arg DeleteTradeParams) error 
 }
 
 const deleteTradeStrategies = `-- name: DeleteTradeStrategies :exec
-DELETE FROM trade_strategies
-WHERE trade_id = $1
+DELETE FROM trade_strategies WHERE trade_id = $1
 `
 
 func (q *Queries) DeleteTradeStrategies(ctx context.Context, tradeID int32) error {
@@ -131,8 +164,7 @@ func (q *Queries) DeleteTradeStrategies(ctx context.Context, tradeID int32) erro
 }
 
 const getTradeByID = `-- name: GetTradeByID :one
-SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at FROM trades
-WHERE id = $1 AND user_id = $2
+SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at FROM trades WHERE id = $1 AND user_id = $2
 `
 
 type GetTradeByIDParams struct {
@@ -170,9 +202,12 @@ func (q *Queries) GetTradeByID(ctx context.Context, arg GetTradeByIDParams) (Tra
 }
 
 const getTradeStrategies = `-- name: GetTradeStrategies :many
-SELECT s.id, s.user_id, s.name, s.description, s.created_at, s.updated_at FROM strategies s
-INNER JOIN trade_strategies ts ON s.id = ts.strategy_id
-WHERE ts.trade_id = $1
+SELECT s.id, s.user_id, s.name, s.description, s.created_at, s.updated_at
+FROM
+    strategies s
+    INNER JOIN trade_strategies ts ON s.id = ts.strategy_id
+WHERE
+    ts.trade_id = $1
 `
 
 func (q *Queries) GetTradeStrategies(ctx context.Context, tradeID int32) ([]Strategy, error) {
@@ -205,9 +240,70 @@ func (q *Queries) GetTradeStrategies(ctx context.Context, tradeID int32) ([]Stra
 	return items, nil
 }
 
+const getTradesByAccountID = `-- name: GetTradesByAccountID :many
+SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+FROM trades
+WHERE
+    account_id = $1
+    AND user_id = $2
+ORDER BY date DESC, time DESC
+`
+
+type GetTradesByAccountIDParams struct {
+	AccountID sql.NullInt32 `json:"account_id"`
+	UserID    int32         `json:"user_id"`
+}
+
+func (q *Queries) GetTradesByAccountID(ctx context.Context, arg GetTradesByAccountIDParams) ([]Trade, error) {
+	rows, err := q.db.QueryContext(ctx, getTradesByAccountID, arg.AccountID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Trade
+	for rows.Next() {
+		var i Trade
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.AccountID,
+			&i.Date,
+			&i.Time,
+			&i.Pair,
+			&i.Type,
+			&i.Entry,
+			&i.Exit,
+			&i.Lots,
+			&i.Pips,
+			&i.Pl,
+			&i.Rr,
+			&i.Status,
+			&i.StopLoss,
+			&i.TakeProfit,
+			&i.Notes,
+			&i.Mistakes,
+			&i.Amount,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTradesByUserID = `-- name: GetTradesByUserID :many
-SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at FROM trades
-WHERE user_id = $1
+SELECT id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+FROM trades
+WHERE
+    user_id = $1
 ORDER BY date DESC, time DESC
 `
 
@@ -277,8 +373,11 @@ SET
     mistakes = $17,
     amount = $18,
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1 AND user_id = $19
-RETURNING id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
+WHERE
+    id = $1
+    AND user_id = $19
+RETURNING
+    id, user_id, account_id, date, time, pair, type, entry, exit, lots, pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount, created_at, updated_at
 `
 
 type UpdateTradeParams struct {

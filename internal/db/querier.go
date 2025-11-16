@@ -25,6 +25,7 @@ type Querier interface {
 	GetStrategyByID(ctx context.Context, arg GetStrategyByIDParams) (Strategy, error)
 	GetTradeByID(ctx context.Context, arg GetTradeByIDParams) (Trade, error)
 	GetTradeStrategies(ctx context.Context, tradeID int32) ([]Strategy, error)
+	GetTradesByAccountID(ctx context.Context, arg GetTradesByAccountIDParams) ([]Trade, error)
 	GetTradesByUserID(ctx context.Context, userID int32) ([]Trade, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (GetUserByIDRow, error)

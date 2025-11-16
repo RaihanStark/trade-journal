@@ -18,6 +18,27 @@ func NewTradeRepository(queries *db.Queries) *TradeRepository {
 	return &TradeRepository{queries: queries}
 }
 
+func (r *TradeRepository) GetByAccountID(ctx context.Context, accountID int64, userID int64) ([]*trade.Trade, error) {
+	results, err := r.queries.GetTradesByAccountID(ctx, db.GetTradesByAccountIDParams{
+		AccountID: sql.NullInt32{Int32: int32(accountID), Valid: true},
+		UserID:    int32(userID),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	trades := make([]*trade.Trade, len(results))
+	for i, result := range results {
+		strategies, err := r.queries.GetTradeStrategies(ctx, result.ID)
+		if err != nil {
+			return nil, err
+		}
+		trades[i] = r.toDomain(&result, strategies)
+	}
+
+	return trades, nil
+}
+
 func (r *TradeRepository) Create(ctx context.Context, t *trade.Trade) (*trade.Trade, error) {
 	result, err := r.queries.CreateTrade(ctx, db.CreateTradeParams{
 		UserID:     int32(t.UserID),

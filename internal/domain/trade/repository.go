@@ -8,4 +8,5 @@ type Repository interface {
 	GetByUserID(ctx context.Context, userID int64) ([]*Trade, error)
 	Update(ctx context.Context, trade *Trade) (*Trade, error)
 	Delete(ctx context.Context, id int64, userID int64) error
+	GetByAccountID(ctx context.Context, accountID int64, userID int64) ([]*Trade, error)
 }

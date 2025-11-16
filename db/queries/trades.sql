@@ -1,29 +1,68 @@
 -- name: CreateTrade :one
-INSERT INTO trades (
-    user_id, account_id, date, time, pair, type, entry, exit, lots,
-    pips, pl, rr, status, stop_loss, take_profit, notes, mistakes, amount
-) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
-)
-RETURNING *;
+INSERT INTO
+    trades (
+        user_id,
+        account_id,
+        date,
+        time,
+        pair,
+        type,
+        entry,
+        exit,
+        lots,
+        pips,
+        pl,
+        rr,
+        status,
+        stop_loss,
+        take_profit,
+        notes,
+        mistakes,
+        amount
+    )
+VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12,
+        $13,
+        $14,
+        $15,
+        $16,
+        $17,
+        $18
+    )
+RETURNING
+    *;
 
 -- name: AddTradeStrategy :exec
-INSERT INTO trade_strategies (trade_id, strategy_id)
-VALUES ($1, $2);
+INSERT INTO trade_strategies (trade_id, strategy_id) VALUES ($1, $2);
 
 -- name: GetTradesByUserID :many
-SELECT * FROM trades
-WHERE user_id = $1
+SELECT *
+FROM trades
+WHERE
+    user_id = $1
 ORDER BY date DESC, time DESC;
 
 -- name: GetTradeByID :one
-SELECT * FROM trades
-WHERE id = $1 AND user_id = $2;
+SELECT * FROM trades WHERE id = $1 AND user_id = $2;
 
 -- name: GetTradeStrategies :many
-SELECT s.* FROM strategies s
-INNER JOIN trade_strategies ts ON s.id = ts.strategy_id
-WHERE ts.trade_id = $1;
+SELECT s.*
+FROM
+    strategies s
+    INNER JOIN trade_strategies ts ON s.id = ts.strategy_id
+WHERE
+    ts.trade_id = $1;
 
 -- name: UpdateTrade :one
 UPDATE trades
@@ -46,13 +85,22 @@ SET
     mistakes = $17,
     amount = $18,
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1 AND user_id = $19
-RETURNING *;
+WHERE
+    id = $1
+    AND user_id = $19
+RETURNING
+    *;
 
 -- name: DeleteTradeStrategies :exec
-DELETE FROM trade_strategies
-WHERE trade_id = $1;
+DELETE FROM trade_strategies WHERE trade_id = $1;
 
 -- name: DeleteTrade :exec
-DELETE FROM trades
-WHERE id = $1 AND user_id = $2;
+DELETE FROM trades WHERE id = $1 AND user_id = $2;
+
+-- name: GetTradesByAccountID :many
+SELECT *
+FROM trades
+WHERE
+    account_id = $1
+    AND user_id = $2
+ORDER BY date DESC, time DESC;

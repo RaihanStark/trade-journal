@@ -39,13 +39,30 @@ func (h *TradeHandler) CreateTrade(c echo.Context) error {
 func (h *TradeHandler) GetTrades(c echo.Context) error {
 	userID := c.Get("user_id").(int64)
 
+	// If account_id is provided, get trades by account ID
+	if accountID := c.QueryParam("account_id"); accountID != "" {
+		accountID, err := strconv.ParseInt(accountID, 10, 64)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": "Invalid account ID",
+			})
+		}
+		trades, err := h.service.GetTradesByAccountID(c.Request().Context(), accountID, userID)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": err.Error(),
+			})
+		}
+		return c.JSON(http.StatusOK, trades)
+	}
+
+	// Otherwise, get all trades for the user
 	trades, err := h.service.GetUserTrades(c.Request().Context(), userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
 		})
 	}
-
 	return c.JSON(http.StatusOK, trades)
 }
 
