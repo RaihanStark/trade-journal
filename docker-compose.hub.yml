@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  backend:
+    # Use image from Docker Hub instead of building
+    image: actuallyraihan/trade-journal-backend:${TAG:-latest}
+    build: null  # Disable building
+
+  frontend:
+    # Use image from Docker Hub instead of building
+    image: actuallyraihan/trade-journal-frontend:${TAG:-latest}
+    build: null  # Disable building
