@@ -122,7 +122,7 @@
 	}
 </script>
 
-<div class="grid h-full grid-cols-12 grid-rows-[auto_auto_auto_1fr] bg-slate-950">
+<div class="grid h-full grid-cols-12 grid-rows-[auto_auto_auto_1fr] overflow-hidden bg-slate-950">
 	<!-- Header -->
 	<div
 		class="col-span-12 flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-2"
@@ -264,7 +264,7 @@
 	</div>
 
 	<!-- Main Content -->
-	<div class="col-span-10 row-span-1 border-r border-slate-800">
+	<div class="col-span-10 row-span-1 overflow-hidden border-r border-slate-800">
 		{#await data.trades}
 			<div class="flex h-64 items-center justify-center">
 				<p class="text-slate-500">Loading trades...</p>
@@ -274,7 +274,7 @@
 		{/await}
 	</div>
 
-	<div class="col-span-2 row-span-1">
+	<div class="col-span-2 row-span-1 overflow-hidden">
 		{#await data.analytics}
 			<div class="flex h-full items-center justify-center">
 				<p class="text-xs text-slate-500">Loading...</p>
