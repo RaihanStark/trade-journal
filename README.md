@@ -2,6 +2,16 @@
 
 A forex trading journal application with a SvelteKit frontend and Go backend.
 
+![Dashboard Screenshot](./docs/screenshots/dashboard.png)
+
+## Features
+- 📊 Real-time trading analytics and metrics
+- 💰 Account balance tracking with deposits/withdrawals
+- 📈 Trade management with P/L calculations
+- 🎯 Strategy tracking and assignment
+- 🌙 Dark terminal-inspired UI
+- 🔐 JWT authentication
+
 ## Project Structure (DDD Architecture)
 
 ```
